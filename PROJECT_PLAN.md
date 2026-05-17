@@ -1,118 +1,118 @@
-# Construction Viability Map — Plano do Projeto
+# Construction Viability Map — Project Plan
 
-> Documento mestre de planejamento. Este arquivo registra todas as decisões tomadas na fase de planejamento e serve como referência para retomar o projeto em conversas futuras.
+> Master planning document. This file records every decision made during the planning phase and is the reference point for resuming work in future sessions.
 
-**Última atualização:** 2026-05-17
-**Status:** Planejamento concluído, pronto para Fase 1 (Setup)
-
----
-
-## 1. Visão geral
-
-### Objetivo
-Construir um mapa interativo que mostra a viabilidade de construção em lotes de uma cidade, permitindo filtrar por características físicas e legais (declividade, zoneamento, áreas de risco, APP, etc.).
-
-### Cidade piloto
-**São José, Santa Catarina** (código IBGE: 4216602)
-
-### Proposta de valor
-- POC técnica + projeto de portfólio (open-source no GitHub)
-- Arquitetura modular permitindo adicionar novos municípios sem refatorar o core
-- Demonstra pipeline completo: ingest → transform → feature engineering → visualização interativa
+**Last updated:** 2026-05-17
+**Status:** Phase 1 complete, ready for Phase 2 (Core Ingest)
 
 ---
 
-## 2. Decisões de arquitetura e produto
+## 1. Overview
 
-| Item | Decisão | Justificativa |
+### Goal
+Build an interactive map showing construction viability for lots in a city, with filters across physical and legal characteristics (slope, zoning, risk areas, APP, etc.).
+
+### Pilot city
+**São José, Santa Catarina, Brazil** (IBGE code: 4216602)
+
+### Value proposition
+- Technical POC + portfolio project (open-source on GitHub)
+- Modular architecture allowing new municipalities to be added without refactoring the core
+- Demonstrates a full pipeline: ingest → transform → feature engineering → interactive visualization
+
+---
+
+## 2. Architecture and product decisions
+
+| Item | Decision | Rationale |
 |---|---|---|
-| Unidade espacial | Lotes individuais | Maior granularidade analítica |
-| Estratégia de lotes | **Alternativa B**: OSM buildings + quadras sintéticas | São José não tem cadastro público de lotes; OSM é a melhor proxy disponível |
-| Modelo de viabilidade | Atributos independentes filtráveis | Permite ao usuário ponderar critérios próprios, em vez de score fixo |
-| Stack | Python + Streamlit + Folium | Filtros dinâmicos, mapa Leaflet integrado, deploy gratuito no Streamlit Cloud |
-| Arquitetura | Multi-município via Adapter Pattern | Permite plugar novas cidades sem alterar o core |
-| Dependências | pip + venv + requirements.txt | Simplicidade absoluta, sem ferramentas extras |
-| Repositório | GitHub público | Portfólio + facilita contribuição open-source |
-| Plano Diretor (PDFs) | MVP: imagem georreferenciada como camada visual. Vetorização: backlog | Reduz tempo até MVP; vetorização é trabalho manual de 4–8h |
-| Idioma do código | Inglês | Boas práticas open-source |
-| Idioma da documentação | Português | Público inicial é brasileiro |
+| Spatial unit | Individual lots | Highest analytical granularity |
+| Lot strategy | **Alternative B**: OSM buildings + synthetic blocks | São José has no public cadastral dataset; OSM is the best available proxy |
+| Viability model | Independent filterable attributes | Lets the user weight criteria themselves rather than locking in a fixed score |
+| Stack | Python + Streamlit + Folium | Dynamic filters, integrated Leaflet map, free deploy on Streamlit Cloud |
+| Architecture | Multi-municipality via Adapter Pattern | New cities plug in without changing the core |
+| Dependencies | pip + venv + requirements.txt | Absolute simplicity, no extra tooling |
+| Repository | Public GitHub | Portfolio + supports open-source contribution |
+| Master Plan (PDFs) | MVP: georeferenced raster overlay. Vectorization: backlog | Faster path to MVP; vectorization is 4–8h of manual work |
+| Code language | English | Open-source best practice |
+| Documentation language | English | Maximum reach for portfolio and contributors |
 
 ---
 
-## 3. Fontes de dados
+## 3. Data sources
 
-| Camada | Fonte | Tipo | Status |
+| Layer | Source | Type | Status |
 |---|---|---|---|
-| Limite municipal | IBGE (malha 2022) | Shapefile | ✅ Aberto |
-| Vias | OpenStreetMap (via osmnx) | GeoJSON | ✅ Aberto |
-| Edificações (proxy lote) | OSM `building=*` | GeoJSON | ✅ Aberto |
-| Quadras | OSM (faces da rede viária) | Derivado | ✅ Aberto |
-| MDE / Declividade | Topodata INPE (~30m) | GeoTIFF | ✅ Aberto |
-| Hidrografia | IBGE BC250 ou ANA | Shapefile | ✅ Aberto |
-| Setores censitários | IBGE Censo 2022 | Shapefile + CSV | ✅ Aberto |
-| Zoneamento legal | Plano Diretor SJ — Mapa 03 (PDF) | Imagem (MVP) → vetor (v2) | ⚠️ Manual |
-| Áreas de risco | Plano Diretor SJ — Mapa 08 (PDF) | Imagem (MVP) → vetor (v2) | ⚠️ Manual |
+| Municipal boundary | IBGE (2022 mesh) | Shapefile | ✅ Open |
+| Roads | OpenStreetMap (via osmnx) | GeoJSON | ✅ Open |
+| Buildings (lot proxy) | OSM `building=*` | GeoJSON | ✅ Open |
+| Blocks | OSM (street-network faces) | Derived | ✅ Open |
+| DEM / Slope | Topodata INPE (~30m) | GeoTIFF | ✅ Open |
+| Hydrography | IBGE BC250 or ANA | Shapefile | ✅ Open |
+| Census tracts | IBGE Census 2022 | Shapefile + CSV | ✅ Open |
+| Legal zoning | SJ Master Plan — Map 03 (PDF) | Raster (MVP) → vector (v2) | ⚠️ Manual |
+| Risk areas | SJ Master Plan — Map 08 (PDF) | Raster (MVP) → vector (v2) | ⚠️ Manual |
 
-### Notas sobre São José/SC
-- **Não há geoportal público** (diferente de Florianópolis, que tem `geo.pmf.sc.gov.br`)
-- **Não há shapefile aberto de lotes** — só consulta individual por inscrição no IPTU
-- Cartas Geotécnicas de Aptidão à Urbanização Frente aos Desastres Naturais existem no Anexo 15 do Plano Diretor
+### Notes on São José/SC
+- **No public geoportal** (unlike Florianópolis, which has `geo.pmf.sc.gov.br`)
+- **No open lot shapefile** — only per-property lookup via municipal IPTU records
+- Geotechnical Charts of Urbanization Aptitude Against Natural Disasters exist in Annex 15 of the Master Plan
 
 ---
 
-## 4. Modelo de dados
+## 4. Data model
 
-Cada linha do dataset final = um lote (ou proxy). Esquema da tabela:
+Each row in the final dataset = one lot (or proxy). Schema:
 
 ```
-lot_id           : str           — identificador único
-geometry         : Polygon       — geometria em EPSG:31982 (UTM 22S)
+lot_id           : str           — unique identifier
+geometry         : Polygon       — geometry in EPSG:31982 (UTM 22S)
 lot_type         : enum          — osm_building | synthetic_block | synthetic_lot
 area_m2          : float
 centroid_lon     : float
 centroid_lat     : float
-neighborhood     : str           — bairro
+neighborhood     : str
 
-# Características físicas
-slope_mean_pct   : float         — declividade média no lote
+# Physical characteristics
+slope_mean_pct   : float         — average slope inside the lot
 slope_max_pct    : float
 elevation_m      : float
 
-# Restrições ambientais
-inside_app       : bool          — dentro de Área de Preservação Permanente?
-app_distance_m   : float         — distância ao corpo d'água mais próximo
+# Environmental restrictions
+inside_app       : bool          — inside a Permanent Preservation Area?
+app_distance_m   : float         — distance to nearest watercourse
 
-# Risco
-in_risk_area     : bool          — (v2 com Mapa 08 vetorizado)
+# Risk
+in_risk_area     : bool          — (v2, once Map 08 is vectorized)
 risk_type        : str           — (v2)
 
-# Zoneamento legal
-zone_code        : str           — (v2 com Mapa 03 vetorizado)
+# Legal zoning
+zone_code        : str           — (v2, once Map 03 is vectorized)
 zone_name        : str           — (v2)
 
-# Acessibilidade urbana
+# Urban accessibility
 distance_to_main_road_m   : float
 distance_to_school_m      : float
 distance_to_health_m      : float
 ```
 
-### Estratégia de lotes (Alternativa B)
-1. Importar quadras do OSM (faces da rede viária)
-2. Importar edificações `building=*` do OSM
-3. Onde existe prédio: usar footprint expandido por buffer como lote proxy → `lot_type=osm_building`
-4. Quadras sem edificações: usar a quadra inteira como unidade → `lot_type=synthetic_block`
-5. Subdivisão de quadras em lotes sintéticos: deixar como refinamento futuro (backlog)
-6. Documentar no README que **não substitui cadastro oficial**
+### Lot-generation strategy (Alternative B)
+1. Import blocks from OSM (faces of the street network)
+2. Import `building=*` features from OSM
+3. Where buildings exist: use the buffered footprint as a lot proxy → `lot_type=osm_building`
+4. Blocks without buildings: use the whole block as a unit → `lot_type=synthetic_block`
+5. Block-to-synthetic-lot subdivision: leave as future refinement (backlog)
+6. Document in the README that this **does not replace the official cadastre**
 
 ---
 
-## 5. Estrutura do repositório
+## 5. Repository layout
 
 ```
 construction-viability-map/
 ├── README.md
 ├── CONTRIBUTING.md
-├── PROJECT_PLAN.md                       # este documento
+├── PROJECT_PLAN.md                       # this document
 ├── requirements.txt
 ├── requirements-dev.txt
 ├── .gitignore
@@ -120,12 +120,12 @@ construction-viability-map/
 ├── config/
 │   ├── global.yaml                       # CRS, paths, defaults
 │   └── regions/
-│       ├── _template.yaml                # template para nova cidade
+│       ├── _template.yaml                # template for new cities
 │       └── sao_jose_sc.yaml
 ├── src/
-│   ├── core/                             # COMPARTILHADO entre cidades
+│   ├── core/                             # SHARED across cities
 │   │   ├── __init__.py
-│   │   ├── config.py                     # loader YAML
+│   │   ├── config.py                     # YAML loader
 │   │   ├── ingest/
 │   │   │   ├── ibge.py
 │   │   │   ├── osm.py
@@ -135,16 +135,16 @@ construction-viability-map/
 │   │   │   ├── app_buffer.py
 │   │   │   ├── lots_from_blocks.py
 │   │   │   └── attribute_join.py
-│   │   ├── features/                     # 1 módulo por atributo
+│   │   ├── features/                     # 1 module per attribute
 │   │   │   ├── slope_feature.py
 │   │   │   ├── zoning_feature.py
 │   │   │   ├── app_feature.py
 │   │   │   ├── risk_feature.py
 │   │   │   └── distance_features.py
-│   │   └── pipeline.py                   # orquestra tudo
-│   ├── regions/                          # ESPECÍFICO por cidade
+│   │   └── pipeline.py                   # orchestrator
+│   ├── regions/                          # CITY-SPECIFIC
 │   │   ├── __init__.py
-│   │   ├── base.py                       # interface RegionAdapter
+│   │   ├── base.py                       # RegionAdapter interface
 │   │   └── sao_jose_sc/
 │   │       ├── __init__.py
 │   │       ├── adapter.py
@@ -170,9 +170,9 @@ construction-viability-map/
 
 ---
 
-## 6. Interface RegionAdapter (modularidade multi-município)
+## 6. RegionAdapter interface (multi-municipality modularity)
 
-Cada município implementa essa interface. O core não conhece detalhes de nenhuma cidade.
+Each municipality implements this interface. The core knows nothing about any specific city.
 
 ```python
 # src/regions/base.py
@@ -180,25 +180,25 @@ from typing import Protocol
 from geopandas import GeoDataFrame
 
 class RegionAdapter(Protocol):
-    slug: str                              # ex: "sao_jose_sc"
-    ibge_code: str                         # ex: "4216602"
-    crs_local: str                         # ex: "EPSG:31982"
+    slug: str                              # e.g. "sao_jose_sc"
+    ibge_code: str                         # e.g. "4216602"
+    crs_local: str                         # e.g. "EPSG:31982"
     bbox: tuple[float, float, float, float]
 
     def load_boundary(self) -> GeoDataFrame: ...
-    def load_zoning(self) -> GeoDataFrame: ...        # específico
-    def load_risk_areas(self) -> GeoDataFrame: ...    # específico
-    def load_lots(self) -> GeoDataFrame: ...          # estratégia varia
-    def zoning_schema(self) -> dict: ...              # mapeia códigos locais → atributos padrão
+    def load_zoning(self) -> GeoDataFrame: ...        # city-specific
+    def load_risk_areas(self) -> GeoDataFrame: ...    # city-specific
+    def load_lots(self) -> GeoDataFrame: ...          # strategy varies
+    def zoning_schema(self) -> dict: ...              # maps local codes → standard attributes
 ```
 
-Adicionar Florianópolis = criar `src/regions/florianopolis_sc/adapter.py` + YAML. Não mexer no core.
+Adding Florianópolis = create `src/regions/florianopolis_sc/adapter.py` + YAML. Never touch the core.
 
 ---
 
-## 7. Configuração YAML por região
+## 7. Per-region YAML configuration
 
-Exemplo: `config/regions/sao_jose_sc.yaml`
+Example: `config/regions/sao_jose_sc.yaml`
 
 ```yaml
 region:
@@ -214,7 +214,7 @@ data_sources:
     provider: ibge
   zoning:
     provider: local
-    strategy: image_overlay              # MVP — v2 muda para "vector"
+    strategy: image_overlay              # MVP — v2 switches to "vector"
     source_files:
       - "data/raw/sao_jose_sc/zoneamento_mapa03.png"
       - "data/raw/sao_jose_sc/zoneamento_mapa03.wld"
@@ -234,10 +234,10 @@ data_sources:
 features:
   slope:
     enabled: true
-    thresholds: {low: 15, medium: 30}    # % declividade
+    thresholds: {low: 15, medium: 30}    # % slope
   app:
     enabled: true
-    river_buffer_m: 30                   # Código Florestal
+    river_buffer_m: 30                   # Brazilian Forest Code
   risk:
     enabled: false                       # v2
   zoning:
@@ -246,119 +246,120 @@ features:
     enabled: true
 ```
 
-**Trocar de cidade = trocar o YAML + criar adapter. Pronto.**
+**Switching cities = swap the YAML + create an adapter. That is the whole job.**
 
 ---
 
-## 8. UI do Streamlit (filtros independentes)
+## 8. Streamlit UI (independent filters)
 
 ### Layout
-- **Sidebar esquerda**: filtros e controles
-- **Área central**: mapa Folium em tela cheia
-- **Sidebar direita (opcional)**: estatísticas dos lotes filtrados
+- **Left sidebar**: filters and controls
+- **Center**: full-width Folium map
+- **Right sidebar (optional)**: statistics for the filtered lot set
 
-### Widgets de controle
-- **Seleção de município** (dropdown — preparado para multi-cidade)
-- **Atributo de coloração** (radio): qual variável colore o mapa
-  - declividade média, área, distância a via, zona (quando vetorizado), bairro
-- **Filtros ativos** (acordeão expansível):
-  - Declividade: slider min/max
-  - Zona: multi-select (quando disponível)
-  - APP: checkbox "excluir lotes em APP"
-  - Risco: multi-select de tipos a excluir
-  - Área mínima do lote: slider
-  - Distância máx a via principal: slider
-  - Tipo de lote (`osm_building` vs `synthetic_block`)
+### Controls
+- **City selector** (dropdown — wired for multi-city)
+- **Coloring attribute** (radio): which variable colors the map
+  - mean slope, area, distance to road, zone (once vectorized), neighborhood
+- **Active filters** (expandable accordion):
+  - Slope: min/max slider
+  - Zone: multi-select (when available)
+  - APP: checkbox "exclude lots inside APP"
+  - Risk: multi-select of types to exclude
+  - Minimum lot area: slider
+  - Max distance to main road: slider
+  - Lot type (`osm_building` vs `synthetic_block`)
 
-### Interações
-- Tooltip ao passar mouse no lote: atributos resumidos
-- Popup ao clicar: tabela completa + link Street View
-- Camadas opcionais (toggle): hidrografia, vias, imagens georref. do Plano Diretor
-- Legenda dinâmica baseada no atributo de coloração
+### Interactions
+- Hover tooltip: summary attributes
+- Click popup: full attribute table + Street View link
+- Toggleable overlays: hydrography, roads, Master Plan rasters
+- Legend updates dynamically with the chosen coloring attribute
 
 ### Performance
-- Limite recomendado para Folium: ~10–20k features
-- Se necessário, migrar mapa para `pydeck` (deck.gl, WebGL)
-- Considerar tile servidor para versão futura
+- Folium handles roughly 10–20k features comfortably
+- If needed, switch the map layer to `pydeck` (deck.gl, WebGL)
+- A tile server is an option for a future revision
 
 ---
 
-## 9. Roadmap de execução
+## 9. Execution roadmap
 
-| Fase | Entregável | Commits estimados |
+| Phase | Deliverable | Approx. commits |
 |---|---|---|
-| 1 | Setup: repo, venv, requirements, estrutura, README inicial, config loader | 3–5 |
-| 2 | Core ingest: IBGE, OSM, Topodata (genéricos) | 5–8 |
-| 3 | Adapter São José/SC + georreferenciamento PDF→PNG+world file | 4–6 |
-| 4 | Core transform: slope, APP buffer, lotes alt. B | 5–7 |
-| 5 | Features: 1 commit por atributo | 5 |
-| 6 | Pipeline orquestrador + dataset final em GeoParquet | 2–3 |
-| 7 | App Streamlit MVP (mapa estático) | 4–6 |
-| 8 | Filtros, tooltips, legenda | 3–4 |
-| 9 | README com screenshots, CONTRIBUTING, deploy no Streamlit Cloud | 3–4 |
+| 1 | Setup: repo, venv, requirements, structure, initial README, config loader | 3–5 |
+| 2 | Core ingest: IBGE, OSM, Topodata (generic) | 5–8 |
+| 3 | São José/SC adapter + PDF→PNG+world-file georeferencing | 4–6 |
+| 4 | Core transform: slope, APP buffer, alt. B lots | 5–7 |
+| 5 | Features: 1 commit per attribute | 5 |
+| 6 | Pipeline orchestrator + final GeoParquet dataset | 2–3 |
+| 7 | Streamlit MVP (static map) | 4–6 |
+| 8 | Filters, tooltips, legend | 3–4 |
+| 9 | README with screenshots, CONTRIBUTING, Streamlit Cloud deploy | 3–4 |
 
-**Total estimado:** 35–50 commits
-
----
-
-## 10. Backlog (issues futuras no GitHub)
-
-### Dados e qualidade
-- [ ] Solicitar shapefile de lotes à Prefeitura de São José via LAI
-- [ ] Vetorização completa dos Mapas 03 e 08 do Plano Diretor
-- [ ] Validação manual de quadras OSM em bairros menos mapeados
-- [ ] Cache de queries Overpass (evitar rate limit)
-
-### Funcionalidade
-- [ ] Algoritmo de subdivisão de quadras em lotes sintéticos
-- [ ] Cálculo de score combinado opcional (ponderação configurável)
-- [ ] Exportação de lotes filtrados como CSV/GeoJSON
-
-### Multi-município
-- [ ] Adapter para Florianópolis (usar `geo.pmf.sc.gov.br`)
-- [ ] Template `_template.yaml` documentado para nova cidade
-- [ ] CONTRIBUTING.md com guia passo-a-passo
-
-### Infraestrutura
-- [ ] CI no GitHub Actions (lint + testes)
-- [ ] Deploy automatizado no Streamlit Cloud
-- [ ] DVC ou Git LFS para versionar dados processados
+**Total estimate:** 35–50 commits
 
 ---
 
-## 11. Riscos conhecidos
+## 10. Backlog (future GitHub issues)
 
-| Risco | Mitigação |
+### Data and quality
+- [ ] Request lot shapefile from the São José municipality via Brazilian Freedom-of-Information Law (LAI)
+- [ ] Full vectorization of Master Plan Maps 03 and 08
+- [ ] Manual validation of OSM blocks in less-mapped neighborhoods
+- [ ] Cache Overpass queries (avoid rate limiting)
+
+### Features
+- [ ] Algorithmic subdivision of blocks into synthetic lots
+- [ ] Optional combined-score calculation (configurable weights)
+- [ ] Export of filtered lots as CSV/GeoJSON
+
+### Multi-municipality
+- [ ] Florianópolis adapter (use `geo.pmf.sc.gov.br`)
+- [ ] Documented `_template.yaml` for new cities
+- [ ] `CONTRIBUTING.md` with a step-by-step guide
+
+### Infrastructure
+- [ ] CI on GitHub Actions (lint + tests)
+- [ ] Automated deploy to Streamlit Cloud
+- [ ] DVC or Git LFS to version processed data
+
+---
+
+## 11. Known risks
+
+| Risk | Mitigation |
 |---|---|
-| Qualidade desigual do OSM em São José | Validação visual antes de processar; documentar limitação |
-| Georreferenciamento manual introduz erro | Documentar pontos de controle e RMS error |
-| Performance do Folium com >10k lotes | Plano B: migrar para pydeck (WebGL) |
-| Rate limit Overpass API | Cache local + download em batches |
-| Topodata 30m é grosseiro para análise intra-quadra | Aceitável para MVP; documentar limitação |
+| Uneven OSM quality across São José | Visual validation before processing; document the limitation |
+| Manual georeferencing introduces error | Record control points and RMS error |
+| Folium performance with >10k lots | Plan B: migrate to pydeck (WebGL) |
+| Overpass API rate limiting | Local cache + batched downloads |
+| Topodata 30m is coarse for intra-block analysis | Acceptable for MVP; document the limitation |
 
 ---
 
-## 12. Glossário
+## 12. Glossary
 
-- **APP** — Área de Preservação Permanente (Código Florestal, Lei 12.651/2012). Em rios, faixa marginal mínima de 30m.
-- **MDE** — Modelo Digital de Elevação
-- **Topodata** — MDE refinado para o Brasil pelo INPE a partir do SRTM
-- **Plano Diretor** — Lei municipal que define zoneamento, uso e ocupação do solo
-- **CRS** — Coordinate Reference System. EPSG:31982 = SIRGAS 2000 / UTM zona 22S (oficial para SC)
-- **EPSG:4326** — WGS84, lat/lon (formato web/GPS)
-- **GeoParquet** — formato colunar eficiente para dados geográficos
-- **Adapter Pattern** — padrão de design onde cada implementação específica respeita uma interface comum
+- **APP** — Área de Preservação Permanente (Permanent Preservation Area, Brazilian Forest Code, Law 12.651/2012). Along rivers: minimum 30m marginal buffer.
+- **DEM** — Digital Elevation Model
+- **Topodata** — DEM refined for Brazil by INPE from SRTM data
+- **Master Plan** — Municipal law defining zoning and land use
+- **CRS** — Coordinate Reference System. EPSG:31982 = SIRGAS 2000 / UTM zone 22S (official for SC)
+- **EPSG:4326** — WGS84, lat/lon (web/GPS format)
+- **GeoParquet** — Efficient columnar format for geospatial data
+- **Adapter Pattern** — Design pattern where each concrete implementation honors a common interface
 
 ---
 
-## 13. Estado atual
+## 13. Current state
 
-✅ **Concluído:**
-- Levantamento de requisitos
-- Identificação de fontes de dados
-- Arquitetura definida
-- Decisões técnicas tomadas
-- Roadmap delineado
+✅ **Complete:**
+- Requirements elicitation
+- Data-source identification
+- Architecture defined
+- Technical decisions made
+- Roadmap drafted
+- **Phase 1: repo structure, configuration system, base interfaces**
 
-🟡 **Próximo passo:**
-- Fase 1: criação da estrutura inicial do repositório
+🟡 **Next step:**
+- Phase 2: Core ingest (IBGE, OSM, Topodata)
