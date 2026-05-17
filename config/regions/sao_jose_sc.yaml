@@ -1,0 +1,54 @@
+region:
+  slug: sao_jose_sc
+  name: "São José"
+  state: SC
+  ibge_code: "4216602"
+  crs_local: "EPSG:31982"               # SIRGAS 2000 / UTM 22S
+  bbox: [-48.72, -27.70, -48.51, -27.49]
+
+data_sources:
+  boundary:
+    provider: ibge
+
+  zoning:
+    provider: local
+    strategy: image_overlay             # MVP: georeferenced raster
+    source_files:
+      - "zoneamento_mapa03.png"
+      - "zoneamento_mapa03.wld"         # world file (georeferencing)
+
+  risk:
+    provider: local
+    strategy: image_overlay
+    source_files:
+      - "risco_mapa08.png"
+      - "risco_mapa08.wld"
+
+  lots:
+    strategy: osm_with_synthetic
+    osm_building_filters:
+      - "yes"
+      - "residential"
+      - "commercial"
+      - "industrial"
+      - "apartments"
+      - "house"
+    synthetic_params:
+      target_lot_area_m2: 360
+      min_lot_frontage_m: 10
+
+features:
+  slope:
+    enabled: true
+    thresholds:
+      low: 15
+      medium: 30
+  app:
+    enabled: true
+    river_buffer_m: 30
+  risk:
+    enabled: false                      # v2 (depends on vectorizing Map 08)
+  zoning:
+    enabled: false                      # v2 (depends on vectorizing Map 03)
+  distance_to_main_road:
+    enabled: true

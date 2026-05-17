@@ -1,0 +1,49 @@
+# Template for adding a new region.
+# Copy this file, rename to <slug>.yaml and fill in the fields.
+# Standard slug: <city>_<state> in snake_case (e.g. florianopolis_sc, curitiba_pr)
+
+region:
+  slug: ""                              # REQUIRED — e.g. "florianopolis_sc"
+  name: ""                              # display name — e.g. "Florianópolis"
+  state: ""                             # state abbreviation — e.g. "SC"
+  ibge_code: ""                         # 7-digit IBGE municipal code
+  crs_local: ""                         # e.g. "EPSG:31982" for SC. See https://epsg.io
+  bbox: [0, 0, 0, 0]                    # [lon_min, lat_min, lon_max, lat_max]
+
+data_sources:
+  boundary:
+    provider: ibge                      # default: uses IBGE via ibge_code
+
+  zoning:
+    provider: local                     # "local" = custom adapter
+    strategy: image_overlay             # "image_overlay" | "vector"
+    source_files: []                    # paths relative to raw/<slug>/
+
+  risk:
+    provider: local
+    strategy: image_overlay
+    source_files: []
+
+  lots:
+    strategy: osm_with_synthetic        # or "official_cadastre" if shapefile exists
+    osm_building_filters:
+      - "yes"
+      - "residential"
+      - "commercial"
+      - "industrial"
+    synthetic_params:
+      target_lot_area_m2: 360
+      min_lot_frontage_m: 10
+
+features:
+  slope:
+    enabled: true
+    # if omitted, uses defaults from global.yaml
+  app:
+    enabled: true
+  risk:
+    enabled: false                      # enable when data is vectorized
+  zoning:
+    enabled: false                      # enable when data is vectorized
+  distance_to_main_road:
+    enabled: true

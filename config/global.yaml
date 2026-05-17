@@ -1,0 +1,28 @@
+# Global defaults — applied to all regions unless overridden in their YAML
+
+paths:
+  data_raw: "data/raw"
+  data_interim: "data/interim"
+  data_processed: "data/processed"
+
+crs:
+  geographic: "EPSG:4326"      # WGS84, lat/lon (web/GPS)
+  brazil_default: "EPSG:31982" # SIRGAS 2000 / UTM 22S (covers SC, PR, RS, part of SP)
+
+output:
+  format: "geoparquet"         # alternative: "gpkg"
+  filename: "lots.geoparquet"
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+
+# Defaults that each region may override
+defaults:
+  features:
+    app:
+      river_buffer_m: 30       # Brazilian Forest Code (Law 12.651/2012)
+    slope:
+      thresholds:
+        low: 15                # % slope
+        medium: 30

@@ -1,0 +1,26 @@
+# Geospatial core
+geopandas>=0.14
+shapely>=2.0
+fiona>=1.9
+pyproj>=3.6
+rasterio>=1.3
+rioxarray>=0.15
+
+# OSM data
+osmnx>=1.9
+
+# Data manipulation
+pandas>=2.1
+numpy>=1.26
+pyarrow>=14.0
+
+# Config
+pyyaml>=6.0
+
+# Web app
+streamlit>=1.30
+folium>=0.15
+streamlit-folium>=0.18
+
+# HTTP / downloads
+requests>=2.31
