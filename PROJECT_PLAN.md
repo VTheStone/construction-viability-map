@@ -50,13 +50,46 @@ Build an interactive map showing construction viability for lots in a city, with
 | DEM / Slope | Topodata INPE (~30m) | GeoTIFF | ✅ Open |
 | Hydrography | IBGE BC250 or ANA | Shapefile | ✅ Open |
 | Census tracts | IBGE Census 2022 | Shapefile + CSV | ✅ Open |
-| Legal zoning | SJ Master Plan — Map 03 (PDF) | Raster (MVP) → vector (v2) | ⚠️ Manual |
-| Risk areas | SJ Master Plan — Map 08 (PDF) | Raster (MVP) → vector (v2) | ⚠️ Manual |
+| Legal zoning | SJ Master Plan — LC 173/2024 (PDFs) | Raster (MVP) → vector (v2) | ⚠️ Manual |
+| Risk areas | SJ Master Plan — LC 173/2024, Map 08 (PDF) | Raster (MVP) → vector (v2) | ⚠️ Manual |
 
-### Notes on São José/SC
+### São José Master Plan — current legislation
+
+The previous Master Plan (Law 1.605/1985) was replaced in late 2024 after **40 years**. Current legislation:
+
+| Law | Date | Subject |
+|---|---|---|
+| **LC 172/2024** | 2024-12-18 | Master Plan (Plano Diretor) — supersedes LC 166/2024 |
+| **LC 173/2024** | 2024-12-18 | Land Use and Occupation — supersedes LC 167/2024, defines zoning |
+| **LC 188/2025** | 2025 | Amendments to LC 172/2024 |
+
+Official PDFs:
+- LC 172/2024: `https://saojose.sc.gov.br/wp-content/uploads/2024/12/Lei-Complementar-172-2024-Institui-o-Plano-Diretor.pdf`
+- LC 173/2024: `https://saojose.sc.gov.br/wp-content/uploads/2024/12/Lei-Complementar-173-2024-Ordenamento.pdf`
+- Index of individual annexes: `https://saojose.sc.gov.br/plano-diretor-participativo/`
+
+### Map annexes (LC 173/2024)
+
+The new Master Plan organizes territory in **macrozones → zones**, with overlays for special-interest areas. Each map below is a separate annex (PDF):
+
+| Annex | Map | Subject | Used in this project? |
+|---|---|---|---|
+| 5 | Map 01 | Urban perimeter (urban / expansion / rural / neighborhoods) | ✅ MVP |
+| 6 | Map 02 | Macrozoning (4 macrozones: A, B, C, Rural) | ✅ MVP |
+| 7 | Map 03 | Zoning (e.g. ZA1–ZA12, ZB1–ZB3, etc.) | 🟡 v2 (vectorization) |
+| 8 | Map 04 | Special-Interest Environmental Areas | 🟡 v2 |
+| 9 | Map 05 | Special-Interest Urban Areas | 🟡 v2 |
+| 11 | Map 07 | Urban Equipment, Green Areas, Open Spaces | 🟡 v2 |
+| **12** | **Map 08** | **Social-Interest Areas + Natural-Disaster Risk Areas** | ✅ MVP |
+| 13 | Map 09 | Transport and Urban Mobility Strategy | 🟡 v2 |
+| 14 | Map 10 | Categories of Disturbance per Territorial Unit | 🟡 v2 |
+| 20 | Table 01 | Urbanistic parameters per zone (max height, FAR, coverage, etc.) | 🟡 v2 |
+
+### Notes on São José/SC data availability
 - **No public geoportal** (unlike Florianópolis, which has `geo.pmf.sc.gov.br`)
 - **No open lot shapefile** — only per-property lookup via municipal IPTU records
-- Geotechnical Charts of Urbanization Aptitude Against Natural Disasters exist in Annex 15 of the Master Plan
+- **Map annexes are PDF only** — no shapefile/GeoJSON published by the municipality
+- Geotechnical Charts of Urbanization Aptitude exist as Annex 15 of the Master Plan (linked externally)
 
 ---
 
@@ -86,9 +119,13 @@ app_distance_m   : float         — distance to nearest watercourse
 in_risk_area     : bool          — (v2, once Map 08 is vectorized)
 risk_type        : str           — (v2)
 
-# Legal zoning
-zone_code        : str           — (v2, once Map 03 is vectorized)
-zone_name        : str           — (v2)
+# Legal zoning (LC 173/2024)
+macrozone_code   : str           — e.g. "A" | "B" | "C" | "MZR"     (v2)
+zone_code        : str           — e.g. "ZA1", "ZB2"                (v2)
+zone_purpose     : str           — descriptive label                (v2)
+max_height_m     : float         — from Table 01, Annex 20          (v2)
+max_coverage_pct : float         — from Table 01                    (v2)
+max_far          : float         — coeficiente de aproveitamento     (v2)
 
 # Urban accessibility
 distance_to_main_road_m   : float
@@ -209,6 +246,17 @@ region:
   crs_local: "EPSG:31982"               # UTM 22S
   bbox: [-48.72, -27.70, -48.51, -27.49]
 
+master_plan:
+  laws:
+    - id: "LC 172/2024"
+      role: "plano_diretor"
+      url: "https://saojose.sc.gov.br/wp-content/uploads/2024/12/Lei-Complementar-172-2024-Institui-o-Plano-Diretor.pdf"
+    - id: "LC 173/2024"
+      role: "ordenamento_uso_ocupacao"
+      url: "https://saojose.sc.gov.br/wp-content/uploads/2024/12/Lei-Complementar-173-2024-Ordenamento.pdf"
+    - id: "LC 188/2025"
+      role: "amendment"
+
 data_sources:
   boundary:
     provider: ibge
@@ -216,14 +264,14 @@ data_sources:
     provider: local
     strategy: image_overlay              # MVP — v2 switches to "vector"
     source_files:
-      - "data/raw/sao_jose_sc/zoneamento_mapa03.png"
-      - "data/raw/sao_jose_sc/zoneamento_mapa03.wld"
+      - "macrozoneamento_mapa02.png"
+      - "macrozoneamento_mapa02.wld"
   risk:
     provider: local
     strategy: image_overlay
     source_files:
-      - "data/raw/sao_jose_sc/risco_mapa08.png"
-      - "data/raw/sao_jose_sc/risco_mapa08.wld"
+      - "risco_mapa08.png"
+      - "risco_mapa08.wld"
   lots:
     strategy: osm_with_synthetic
     osm_building_filters: ["yes", "residential", "commercial", "industrial"]
@@ -260,10 +308,11 @@ features:
 ### Controls
 - **City selector** (dropdown — wired for multi-city)
 - **Coloring attribute** (radio): which variable colors the map
-  - mean slope, area, distance to road, zone (once vectorized), neighborhood
+  - mean slope, area, distance to road, macrozone (MVP) / zone (v2), neighborhood
 - **Active filters** (expandable accordion):
   - Slope: min/max slider
-  - Zone: multi-select (when available)
+  - Macrozone: multi-select (MVP, raster-based until vectorization)
+  - Zone: multi-select (v2)
   - APP: checkbox "exclude lots inside APP"
   - Risk: multi-select of types to exclude
   - Minimum lot area: slider
@@ -289,7 +338,7 @@ features:
 |---|---|---|
 | 1 | Setup: repo, venv, requirements, structure, initial README, config loader | 3–5 |
 | 2 | Core ingest: IBGE, OSM, Topodata (generic) | 5–8 |
-| 3 | São José/SC adapter + PDF→PNG+world-file georeferencing | 4–6 |
+| 3 | São José/SC adapter + PDF→PNG+world-file georeferencing of Maps 01, 02, 08 | 4–6 |
 | 4 | Core transform: slope, APP buffer, alt. B lots | 5–7 |
 | 5 | Features: 1 commit per attribute | 5 |
 | 6 | Pipeline orchestrator + final GeoParquet dataset | 2–3 |
@@ -305,14 +354,18 @@ features:
 
 ### Data and quality
 - [ ] Request lot shapefile from the São José municipality via Brazilian Freedom-of-Information Law (LAI)
-- [ ] Full vectorization of Master Plan Maps 03 and 08
+- [ ] Full vectorization of Master Plan annexes (Maps 02, 03, 04, 08, Table 01)
 - [ ] Manual validation of OSM blocks in less-mapped neighborhoods
 - [ ] Cache Overpass queries (avoid rate limiting)
+- [ ] **Monitor amendments to LC 172/2024 and LC 173/2024** (LC 188/2025 already exists; identify what it changes)
+- [ ] **Document the impact of LC 188/2025** on zoning parameters
 
 ### Features
 - [ ] Algorithmic subdivision of blocks into synthetic lots
 - [ ] Optional combined-score calculation (configurable weights)
 - [ ] Export of filtered lots as CSV/GeoJSON
+- [ ] Hierarchical zoning filter (macrozone → zone)
+- [ ] Display urbanistic parameters (max height, FAR, coverage) per lot on click
 
 ### Multi-municipality
 - [ ] Florianópolis adapter (use `geo.pmf.sc.gov.br`)
@@ -335,6 +388,7 @@ features:
 | Folium performance with >10k lots | Plan B: migrate to pydeck (WebGL) |
 | Overpass API rate limiting | Local cache + batched downloads |
 | Topodata 30m is coarse for intra-block analysis | Acceptable for MVP; document the limitation |
+| **Master Plan amendments invalidating cached map images** | Track law IDs in YAML; re-download when version changes |
 
 ---
 
@@ -343,7 +397,11 @@ features:
 - **APP** — Área de Preservação Permanente (Permanent Preservation Area, Brazilian Forest Code, Law 12.651/2012). Along rivers: minimum 30m marginal buffer.
 - **DEM** — Digital Elevation Model
 - **Topodata** — DEM refined for Brazil by INPE from SRTM data
-- **Master Plan** — Municipal law defining zoning and land use
+- **Master Plan (Plano Diretor)** — Municipal law defining zoning and land use. São José current Master Plan: LC 172/2024.
+- **LC** — Lei Complementar (Complementary Law), the legislative instrument used for Master Plan and zoning laws in Brazil.
+- **Macrozone (Macrozona)** — Top-level territorial division (e.g. Macrozone A, B, C, Rural)
+- **Zone (Zona)** — Subdivision of a macrozone (e.g. ZA1, ZB2)
+- **FAR / Coeficiente de aproveitamento** — Floor Area Ratio: ratio of building floor area to lot area, defines vertical buildability
 - **CRS** — Coordinate Reference System. EPSG:31982 = SIRGAS 2000 / UTM zone 22S (official for SC)
 - **EPSG:4326** — WGS84, lat/lon (web/GPS format)
 - **GeoParquet** — Efficient columnar format for geospatial data
@@ -355,7 +413,7 @@ features:
 
 ✅ **Complete:**
 - Requirements elicitation
-- Data-source identification
+- Data-source identification (including current Master Plan: LC 172/2024 + 173/2024 + 188/2025)
 - Architecture defined
 - Technical decisions made
 - Roadmap drafted

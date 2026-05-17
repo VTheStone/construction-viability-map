@@ -6,20 +6,39 @@ region:
   crs_local: "EPSG:31982"               # SIRGAS 2000 / UTM 22S
   bbox: [-48.72, -27.70, -48.51, -27.49]
 
+# Current Master Plan legislation.
+# São José replaced its 1985 plan in late 2024 with a new set of complementary laws.
+master_plan:
+  laws:
+    - id: "LC 172/2024"
+      role: "plano_diretor"
+      date: "2024-12-18"
+      url: "https://saojose.sc.gov.br/wp-content/uploads/2024/12/Lei-Complementar-172-2024-Institui-o-Plano-Diretor.pdf"
+    - id: "LC 173/2024"
+      role: "ordenamento_uso_ocupacao"
+      date: "2024-12-18"
+      url: "https://saojose.sc.gov.br/wp-content/uploads/2024/12/Lei-Complementar-173-2024-Ordenamento.pdf"
+    - id: "LC 188/2025"
+      role: "amendment_to_172"
+      date: "2025"
+
 data_sources:
   boundary:
     provider: ibge
 
   zoning:
     provider: local
-    strategy: image_overlay             # MVP: georeferenced raster
+    strategy: image_overlay             # MVP: georeferenced raster overlay
+    # For MVP we use Map 02 (macrozoning) — coarser but covers the whole territory.
+    # Map 03 (detailed zoning) is left for v2 once vectorization is done.
     source_files:
-      - "zoneamento_mapa03.png"
-      - "zoneamento_mapa03.wld"         # world file (georeferencing)
+      - "macrozoneamento_mapa02.png"
+      - "macrozoneamento_mapa02.wld"    # world file (georeferencing)
 
   risk:
     provider: local
     strategy: image_overlay
+    # Map 08: Social-Interest Areas + Natural-Disaster Risk Areas
     source_files:
       - "risco_mapa08.png"
       - "risco_mapa08.wld"
