@@ -54,3 +54,6 @@ htmlcov/
 
 # OS
 Thumbs.db
+
+# OSMnx cache (Overpass query responses)
+cache/
