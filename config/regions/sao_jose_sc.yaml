@@ -26,22 +26,69 @@ data_sources:
   boundary:
     provider: ibge
 
-  zoning:
-    provider: local
-    strategy: image_overlay             # MVP: georeferenced raster overlay
-    # For MVP we use Map 02 (macrozoning) — coarser but covers the whole territory.
-    # Map 03 (detailed zoning) is left for v2 once vectorization is done.
-    source_files:
-      - "macrozoneamento_mapa02.png"
-      - "macrozoneamento_mapa02.wld"    # world file (georeferencing)
+  dem:
+    provider: topodata
+    sheet_codes:
+      - "27S495"                          # covers São José metro region
 
-  risk:
+  # Master Plan map annexes (LC 173/2024).
+  # All 10 maps are loaded as georeferenced raster overlays the user can
+  # toggle on/off in the app. Maps 02 (macrozoning) and 08 (risk) are
+  # ALSO vectorized so they drive lot-level filters.
+  master_plan_maps:
     provider: local
-    strategy: image_overlay
-    # Map 08: Social-Interest Areas + Natural-Disaster Risk Areas
-    source_files:
-      - "risco_mapa08.png"
-      - "risco_mapa08.wld"
+    overlay_dir: "master_plan/overlays"   # PNGs + world files live here
+    maps:
+      - id: "map_01"
+        name: "Perímetro Urbano"
+        annex: 5
+        overlay: true
+        vectorized: false
+      - id: "map_02"
+        name: "Macrozoneamento"
+        annex: 6
+        overlay: true
+        vectorized: true                  # drives macrozone filter
+      - id: "map_03"
+        name: "Zoneamento"
+        annex: 7
+        overlay: true
+        vectorized: false                 # v2 (drives detailed zoning filter)
+      - id: "map_04"
+        name: "Área de Especial Interesse Ambiental"
+        annex: 8
+        overlay: true
+        vectorized: false
+      - id: "map_05"
+        name: "Área de Especial Interesse Urbanístico"
+        annex: 9
+        overlay: true
+        vectorized: false
+      - id: "map_06"
+        name: "AEI Urbanístico e Trechos de Sistema Viário"
+        annex: 10
+        overlay: true
+        vectorized: false
+      - id: "map_07"
+        name: "Equipamentos, Áreas Verdes e Espaços Livres"
+        annex: 11
+        overlay: true
+        vectorized: false
+      - id: "map_08"
+        name: "Interesse Social e Áreas de Risco"
+        annex: 12
+        overlay: true
+        vectorized: true                  # drives risk filter
+      - id: "map_09"
+        name: "Estratégia de Transporte e Mobilidade"
+        annex: 13
+        overlay: true
+        vectorized: false
+      - id: "map_10"
+        name: "Categorias de Incomodidades"
+        annex: 14
+        overlay: true
+        vectorized: false
 
   lots:
     strategy: osm_with_synthetic
