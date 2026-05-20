@@ -11,3 +11,6 @@ jupyter>=1.0
 ipykernel>=6.27
 matplotlib>=3.8
 contextily>=1.5
+
+# PDF to image conversion (one-time prep for Master Plan maps)
+pymupdf>=1.24
