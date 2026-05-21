@@ -26,6 +26,9 @@ from geopandas import GeoDataFrame
 
 from src.core.ingest import ibge, osm
 
+from src.core.transform.master_plan_overlays import OverlayMetadata, load_overlays
+from src.core.config import load_region_config
+
 logger = logging.getLogger(__name__)
 
 
@@ -153,6 +156,16 @@ class SaoJoseSCAdapter:
         max_far).
         """
         return {}
+
+    def load_master_plan_overlays(self) -> list[OverlayMetadata]:
+        """Return metadata for every Master Plan map flagged as overlay.
+
+        Reads the region YAML's ``master_plan_maps`` block and delegates
+        to the generic loader in ``core.transform.master_plan_overlays``.
+        """
+        cfg = load_region_config(self.slug)
+        master_plan_cfg = cfg["data_sources"]["master_plan_maps"]
+        return load_overlays(self.raw_dir, master_plan_cfg)
 
     # ----- Internal helpers ----------------------------------------------
 
