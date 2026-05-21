@@ -43,6 +43,11 @@ data_sources:
       - "risco_mapa08.png"
       - "risco_mapa08.wld"
 
+  dem:
+      provider: topodata
+      sheet_codes:
+        - "27S495"                          # covers São José metro region
+
   lots:
     strategy: osm_with_synthetic
     osm_building_filters:
