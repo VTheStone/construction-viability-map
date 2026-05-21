@@ -1,17 +1,11 @@
 """São José / Santa Catarina region adapter.
 
 Implements the RegionAdapter interface for the city of São José, SC.
-Wires city-specific parameters to the generic core/ingest loaders.
+Wires city-specific parameters to the generic core/ingest loaders and
+to the Master Plan overlay loader.
 
-Lot strategy (Alternative B):
-  - OSM buildings used as lot proxies (lot_type=osm_building)
-  - OSM blocks without buildings kept as whole units (lot_type=synthetic_block)
-  - Synthetic-lot subdivision deferred to backlog
-
-Zoning and risk areas are temporarily disabled because the Master Plan
-maps (Maps 02 and 08 of LC 173/2024) are PDF-only and require manual
-georeferencing. The placeholders return empty GeoDataFrames with the
-expected schema so the rest of the pipeline runs.
+Zoning and risk vector layers are placeholders until Maps 02 and 08 of
+LC 173/2024 are manually vectorized (tracked in the project backlog).
 """
 
 from __future__ import annotations
@@ -24,10 +18,9 @@ import geopandas as gpd
 import pandas as pd
 from geopandas import GeoDataFrame
 
-from src.core.ingest import ibge, osm
-
-from src.core.transform.master_plan_overlays import OverlayMetadata, load_overlays
 from src.core.config import load_region_config
+from src.core.ingest import ibge, osm
+from src.core.transform.master_plan_overlays import OverlayMetadata, load_overlays
 
 logger = logging.getLogger(__name__)
 
@@ -67,95 +60,20 @@ class SaoJoseSCAdapter:
         )
         return gdf.to_crs(self.crs_local)
 
-    def load_zoning(self) -> GeoDataFrame:
-        """Return zoning polygons (LC 173/2024).
+    def load_buildings(self) -> GeoDataFrame:
+        """Return OSM building footprints in ``crs_local``.
 
-        Currently returns an empty GeoDataFrame with the expected schema:
-        Maps 02 (macrozoning) and 03 (detailed zoning) of LC 173/2024 are
-        PDF-only and require manual georeferencing + vectorization. This
-        is tracked in the project backlog.
+        Used as an optional reference overlay in the app. No buffering or
+        synthetic lot derivation is applied — these are the raw OSM
+        building polygons.
         """
-        logger.warning(
-            "load_zoning() returning empty GDF: Master Plan maps not yet "
-            "vectorized. See PROJECT_PLAN.md backlog."
-        )
-        return gpd.GeoDataFrame(
-            {
-                "macrozone_code": pd.Series(dtype="string"),
-                "zone_code": pd.Series(dtype="string"),
-                "zone_name": pd.Series(dtype="string"),
-            },
-            geometry=gpd.GeoSeries([], crs=self.crs_local),
-            crs=self.crs_local,
-        )
-
-    def load_risk_areas(self) -> GeoDataFrame:
-        """Return natural-disaster risk polygons (Map 08 of LC 173/2024).
-
-        Currently returns an empty GeoDataFrame. Map 08 is PDF-only and
-        requires manual vectorization (tracked in backlog).
-        """
-        logger.warning(
-            "load_risk_areas() returning empty GDF: Map 08 not yet "
-            "vectorized. See PROJECT_PLAN.md backlog."
-        )
-        return gpd.GeoDataFrame(
-            {
-                "risk_type": pd.Series(dtype="string"),
-                "risk_level": pd.Series(dtype="string"),
-            },
-            geometry=gpd.GeoSeries([], crs=self.crs_local),
-            crs=self.crs_local,
-        )
-
-    def load_lots(self) -> GeoDataFrame:
-        """Build the lot dataset (Alternative B: OSM buildings + blocks).
-
-        Strategy:
-            1. Load the municipal boundary (EPSG:4326 for OSMnx queries).
-            2. Fetch OSM buildings inside the boundary → ``lot_type=osm_building``.
-            3. Fetch OSM-derived blocks → ``lot_type=synthetic_block``.
-            4. Concatenate, reproject to ``crs_local``, assign ``lot_id``.
-
-        Returns:
-            GeoDataFrame in ``crs_local`` with columns:
-            ``lot_id``, ``lot_type``, ``geometry``, plus minimal OSM metadata.
-        """
-        # OSM loaders work in EPSG:4326; load boundary in WGS84 for OSMnx.
         boundary_4326 = ibge.load_municipal_boundary(
             ibge_code=self.ibge_code,
             uf=self.state,
             cache_dir=self.ibge_dir,
         )
-
         buildings = osm.load_buildings(boundary_4326, self.osm_dir)
-        blocks = osm.load_blocks(boundary_4326, self.osm_dir)
-
-        buildings_lots = self._buildings_to_lots(buildings)
-        synthetic_lots = self._blocks_to_synthetic_lots(blocks)
-
-        lots = pd.concat([buildings_lots, synthetic_lots], ignore_index=True)
-        lots = gpd.GeoDataFrame(lots, geometry="geometry", crs="EPSG:4326")
-        lots = lots.to_crs(self.crs_local)
-        lots["lot_id"] = [f"lot_{i:07d}" for i in range(len(lots))]
-
-        logger.info(
-            "load_lots: %d total (%d OSM buildings + %d synthetic blocks)",
-            len(lots),
-            (lots["lot_type"] == "osm_building").sum(),
-            (lots["lot_type"] == "synthetic_block").sum(),
-        )
-        return lots[["lot_id", "lot_type", "geometry"]]
-
-    def zoning_schema(self) -> dict[str, Any]:
-        """Map São José zoning codes to standardized attributes.
-
-        Empty for now (zoning not yet vectorized). When Map 03 + Table 01
-        of LC 173/2024 are vectorized, this returns one entry per zone
-        with its urbanistic parameters (max_height_m, max_coverage_pct,
-        max_far).
-        """
-        return {}
+        return buildings.to_crs(self.crs_local)
 
     def load_master_plan_overlays(self) -> list[OverlayMetadata]:
         """Return metadata for every Master Plan map flagged as overlay.
@@ -167,23 +85,53 @@ class SaoJoseSCAdapter:
         master_plan_cfg = cfg["data_sources"]["master_plan_maps"]
         return load_overlays(self.raw_dir, master_plan_cfg)
 
-    # ----- Internal helpers ----------------------------------------------
+    def load_zoning_vectors(self) -> GeoDataFrame:
+        """Return zoning polygons (vectorized from LC 173/2024 Map 02/03).
 
-    def _buildings_to_lots(self, buildings: GeoDataFrame) -> GeoDataFrame:
-        """Tag OSM building footprints as lot proxies."""
-        out = buildings.copy()
-        out["lot_type"] = "osm_building"
-        # Drop empty geometries that occasionally appear in OSM exports.
-        out = out[~out.geometry.is_empty & out.geometry.notna()]
-        return out[["lot_type", "geometry"]]
-
-    def _blocks_to_synthetic_lots(self, blocks: GeoDataFrame) -> GeoDataFrame:
-        """Tag whole OSM blocks as synthetic lot units (Alternative B).
-
-        Future refinement (backlog): subdivide each block into multiple
-        synthetic lots based on target area and frontage parameters.
+        Currently returns an empty GeoDataFrame with the expected schema.
+        Maps 02 (macrozoning) and 03 (detailed zoning) of LC 173/2024 are
+        PDF-only and require manual vectorization in QGIS, tracked in the
+        project backlog.
         """
-        out = blocks.copy()
-        out["lot_type"] = "synthetic_block"
-        out = out[~out.geometry.is_empty & out.geometry.notna()]
-        return out[["lot_type", "geometry"]]
+        logger.warning(
+            "load_zoning_vectors() returning empty GDF: Master Plan maps "
+            "not yet vectorized. See PROJECT_PLAN.md backlog."
+        )
+        return gpd.GeoDataFrame(
+            {
+                "macrozone_code": pd.Series(dtype="string"),
+                "zone_code": pd.Series(dtype="string"),
+                "zone_name": pd.Series(dtype="string"),
+            },
+            geometry=gpd.GeoSeries([], crs=self.crs_local),
+            crs=self.crs_local,
+        )
+
+    def load_risk_vectors(self) -> GeoDataFrame:
+        """Return natural-disaster risk polygons (vectorized from Map 08).
+
+        Currently returns an empty GeoDataFrame. Map 08 of LC 173/2024 is
+        PDF-only and requires manual vectorization (tracked in backlog).
+        """
+        logger.warning(
+            "load_risk_vectors() returning empty GDF: Map 08 not yet "
+            "vectorized. See PROJECT_PLAN.md backlog."
+        )
+        return gpd.GeoDataFrame(
+            {
+                "risk_type": pd.Series(dtype="string"),
+                "risk_level": pd.Series(dtype="string"),
+            },
+            geometry=gpd.GeoSeries([], crs=self.crs_local),
+            crs=self.crs_local,
+        )
+
+    def zoning_schema(self) -> dict[str, Any]:
+        """Map São José zoning codes to standardized attributes.
+
+        Empty for now (zoning not yet vectorized). When Map 03 + Table 01
+        of LC 173/2024 are vectorized, this returns one entry per zone
+        with its urbanistic parameters (max_height_m, max_coverage_pct,
+        max_far).
+        """
+        return {}
