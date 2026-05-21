@@ -11,6 +11,8 @@ from typing import Any, Protocol, runtime_checkable
 
 from geopandas import GeoDataFrame
 
+from src.core.transform.master_plan_overlays import OverlayMetadata
+
 
 @runtime_checkable
 class RegionAdapter(Protocol):
@@ -27,7 +29,9 @@ class RegionAdapter(Protocol):
 
     Data loaders
     ------------
-    All loaders must return GeoDataFrames in ``crs_local``.
+    All loaders return GeoDataFrames in ``crs_local`` unless otherwise noted.
+    Layers that are still pending vectorization (zoning, risk) may return an
+    empty GeoDataFrame with the expected schema.
     """
 
     slug: str
@@ -37,35 +41,38 @@ class RegionAdapter(Protocol):
     bbox: tuple[float, float, float, float]
 
     def load_boundary(self) -> GeoDataFrame:
-        """Municipal boundary polygon."""
+        """Municipal boundary polygon in ``crs_local``."""
         ...
 
-    def load_zoning(self) -> GeoDataFrame:
-        """Legal zoning polygons.
+    def load_buildings(self) -> GeoDataFrame:
+        """OSM building footprints inside the boundary.
 
-        Each row should have at minimum: ``zone_code``, ``zone_name``, geometry.
-        For image-overlay strategy (no vectorized zoning yet), this may return
-        an empty GeoDataFrame with the expected schema.
+        Used as an optional reference overlay in the app. No buffering,
+        no synthetic lot derivation — just the raw building polygons.
         """
         ...
 
-    def load_risk_areas(self) -> GeoDataFrame:
-        """Risk-area polygons (landslide, flood, etc.).
+    def load_master_plan_overlays(self) -> list[OverlayMetadata]:
+        """Metadata for every Master Plan map flagged as overlay.
 
-        Each row should have at minimum: ``risk_type``, geometry. May return
-        an empty GeoDataFrame if no vectorized data is available yet.
+        Each entry points to a georeferenced GeoTIFF on disk plus its CRS,
+        bounds, and dimensions.
         """
         ...
 
-    def load_lots(self) -> GeoDataFrame:
-        """Lot polygons (or proxies, depending on the strategy).
+    def load_zoning_vectors(self) -> GeoDataFrame:
+        """Zoning polygons from vectorized Master Plan maps.
 
-        Each row must have at minimum: ``lot_id``, ``lot_type``, geometry.
-        ``lot_type`` documents data provenance:
-          - ``osm_building``    : OSM building footprint used as proxy
-          - ``synthetic_lot``   : algorithmic subdivision of a block
-          - ``synthetic_block`` : whole OSM block used as unit
-          - ``cadastre``        : official cadastre (when/if available)
+        Returns an empty GeoDataFrame with the expected schema if zoning
+        has not yet been vectorized.
+        """
+        ...
+
+    def load_risk_vectors(self) -> GeoDataFrame:
+        """Risk-area polygons from vectorized Master Plan maps.
+
+        Returns an empty GeoDataFrame with the expected schema if risk
+        areas have not yet been vectorized.
         """
         ...
 

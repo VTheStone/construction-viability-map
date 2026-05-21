@@ -26,22 +26,85 @@ data_sources:
   boundary:
     provider: ibge
 
-  zoning:
-    provider: local
-    strategy: image_overlay             # MVP: georeferenced raster overlay
-    # For MVP we use Map 02 (macrozoning) — coarser but covers the whole territory.
-    # Map 03 (detailed zoning) is left for v2 once vectorization is done.
-    source_files:
-      - "macrozoneamento_mapa02.png"
-      - "macrozoneamento_mapa02.wld"    # world file (georeferencing)
+  dem:
+    provider: topodata
+    sheet_codes:
+      - "27S495"                          # covers São José metro region
 
-  risk:
+  # Master Plan map annexes (LC 173/2024).
+  # All 10 maps are loaded as georeferenced raster overlays toggleable in
+  # the app, AND vectorized into polygon datasets that drive filters.
+  # Vectorization happens incrementally in the priority order below; the
+  # loaders gracefully return empty GeoDataFrames for maps whose vector
+  # output doesn't exist yet on disk.
+  master_plan_maps:
     provider: local
-    strategy: image_overlay
-    # Map 08: Social-Interest Areas + Natural-Disaster Risk Areas
-    source_files:
-      - "risco_mapa08.png"
-      - "risco_mapa08.wld"
+    overlay_dir: "master_plan/overlays"   # PNGs + world files
+    vector_dir: "master_plan/vectors"     # GeoJSONs after vectorization
+    # Priority order (lowest = vectorize first):
+    #   1: map_02   2: map_08   3: map_01   4: map_04   5: map_05
+    #   6: map_06   7: map_07   8: map_10   9: map_03  10: map_09
+    maps:
+      - id: "map_01"
+        name: "Perímetro Urbano"
+        annex: 5
+        overlay: true
+        vectorized: true
+        vector_priority: 3
+      - id: "map_02"
+        name: "Macrozoneamento"
+        annex: 6
+        overlay: true
+        vectorized: true
+        vector_priority: 1                # drives macrozone filter
+      - id: "map_03"
+        name: "Zoneamento"
+        annex: 7
+        overlay: true
+        vectorized: true
+        vector_priority: 9                # most labor-intensive (~30+ zones)
+      - id: "map_04"
+        name: "Área de Especial Interesse Ambiental"
+        annex: 8
+        overlay: true
+        vectorized: true
+        vector_priority: 4
+      - id: "map_05"
+        name: "Área de Especial Interesse Urbanístico"
+        annex: 9
+        overlay: true
+        vectorized: true
+        vector_priority: 5
+      - id: "map_06"
+        name: "AEI Urbanístico e Trechos de Sistema Viário"
+        annex: 10
+        overlay: true
+        vectorized: true
+        vector_priority: 6
+      - id: "map_07"
+        name: "Equipamentos, Áreas Verdes e Espaços Livres"
+        annex: 11
+        overlay: true
+        vectorized: true
+        vector_priority: 7
+      - id: "map_08"
+        name: "Interesse Social e Áreas de Risco"
+        annex: 12
+        overlay: true
+        vectorized: true
+        vector_priority: 2                # drives risk filter
+      - id: "map_09"
+        name: "Estratégia de Transporte e Mobilidade"
+        annex: 13
+        overlay: true
+        vectorized: true
+        vector_priority: 10
+      - id: "map_10"
+        name: "Categorias de Incomodidades"
+        annex: 14
+        overlay: true
+        vectorized: true
+        vector_priority: 8
 
   dem:
       provider: topodata
