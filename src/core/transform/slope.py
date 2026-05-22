@@ -66,12 +66,23 @@ def _reproject_dem(
     logger.info("Reprojected DEM to %s -> %s", dst_crs, dst_path)
 
 
+# Sentinel value for pixels outside the municipal boundary. -9999 is the
+# conventional NoData marker for elevation/slope rasters and is safely
+# outside the valid range (real elevation never goes that negative).
+NODATA_VALUE = -9999.0
+
+
 def _clip_to_boundary(
     src_path: Path,
     boundary: GeoDataFrame,
     dst_path: Path,
 ) -> None:
     """Clip ``src_path`` to the boundary polygon and write to ``dst_path``.
+
+    Pixels outside the boundary are set to NODATA_VALUE and the NoData
+    flag is declared in the output profile, so downstream tools
+    (rasterio, GDAL, QGIS) treat them as missing data rather than
+    flat-zero terrain.
 
     Assumes ``boundary`` is already in the same CRS as the raster.
     """
@@ -82,21 +93,32 @@ def _clip_to_boundary(
                 f"{src.crs}. Reproject the boundary first."
             )
         geoms = boundary.geometry.tolist()
+        # filled=True writes NODATA_VALUE outside the polygon; combined with
+        # nodata=NODATA_VALUE in the profile this becomes a real NoData mask.
         clipped_data, clipped_transform = rio_mask(
-            src, geoms, crop=True, all_touched=True
+            src,
+            geoms,
+            crop=True,
+            all_touched=True,
+            nodata=NODATA_VALUE,
+            filled=True,
         )
         profile = src.profile.copy()
         profile.update(
             height=clipped_data.shape[1],
             width=clipped_data.shape[2],
             transform=clipped_transform,
+            nodata=NODATA_VALUE,
+            dtype=rasterio.float32,
         )
 
     dst_path.parent.mkdir(parents=True, exist_ok=True)
     with rasterio.open(dst_path, "w", **profile) as dst:
-        dst.write(clipped_data)
+        dst.write(clipped_data.astype(np.float32))
 
-    logger.info("Clipped DEM to boundary -> %s", dst_path)
+    logger.info(
+        "Clipped DEM to boundary (NoData=%s) -> %s", NODATA_VALUE, dst_path
+    )
 
 
 def _compute_slope_arrays(
@@ -124,6 +146,11 @@ def _compute_slope_arrays(
     #     g h i
 
     elev = elevation.astype(np.float32, copy=False)
+    # NaN inputs would propagate through the gradient and contaminate
+    # neighbouring pixels. The caller marks NoData as NaN, but we run
+    # the gradient on a 0-filled copy and reapply the mask outside.
+    nan_mask = np.isnan(elev)
+    elev = np.where(nan_mask, 0.0, elev)
     h, w = elev.shape
 
     dz_dx = np.zeros_like(elev)
@@ -193,25 +220,46 @@ def compute_slope(
     clipped = interim_dir / "dem_clipped.tif"
     _clip_to_boundary(reprojected, boundary, clipped)
 
-    # Step 3 + 4: compute slope and write as 2-band GeoTIFF
+    # Step 3 + 4: compute slope and write as 2-band GeoTIFF.
+    # Carry the NoData mask through so the final slope file declares
+    # pixels outside the municipal boundary as missing.
     with rasterio.open(clipped) as src:
         elevation = src.read(1)
+        nodata_in = src.nodata
         # In rasterio, transform.a is pixel width, |transform.e| is pixel height.
         pixel_w = abs(src.transform.a)
         pixel_h = abs(src.transform.e)
-        slope_deg, slope_pct = _compute_slope_arrays(elevation, pixel_w, pixel_h)
+
+        # Identify NoData pixels in elevation so we don't propagate
+        # bogus gradients across the boundary.
+        if nodata_in is not None:
+            nodata_mask = elevation == nodata_in
+            elevation_clean = np.where(nodata_mask, np.nan, elevation)
+        else:
+            nodata_mask = np.zeros_like(elevation, dtype=bool)
+            elevation_clean = elevation
+
+        slope_deg, slope_pct = _compute_slope_arrays(
+            elevation_clean, pixel_w, pixel_h
+        )
+
+        # Reapply NoData to slope outputs: pixels outside the boundary
+        # must remain marked as missing.
+        slope_deg[nodata_mask] = NODATA_VALUE
+        slope_pct[nodata_mask] = NODATA_VALUE
 
         profile = src.profile.copy()
         profile.update(
             count=2,
             dtype=rasterio.float32,
             compress="lzw",
+            nodata=NODATA_VALUE,
         )
 
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         with rasterio.open(dst_path, "w", **profile) as dst:
-            dst.write(slope_deg, 1)
-            dst.write(slope_pct, 2)
+            dst.write(slope_deg.astype(np.float32), 1)
+            dst.write(slope_pct.astype(np.float32), 2)
             dst.set_band_description(1, "slope_degrees")
             dst.set_band_description(2, "slope_percent")
 
