@@ -24,3 +24,7 @@ streamlit-folium>=0.18
 
 # HTTP / downloads
 requests>=2.31
+
+# Visualization / image output
+matplotlib>=3.8
+pillow>=10.0
