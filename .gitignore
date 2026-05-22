@@ -55,5 +55,5 @@ htmlcov/
 # OS
 Thumbs.db
 
-# OSMnx cache (Overpass query responses)
+# OSMnx response cache (created automatically when running ingest)
 cache/
