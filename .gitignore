@@ -54,3 +54,6 @@ htmlcov/
 
 # OS
 Thumbs.db
+
+# OSMnx response cache (created automatically when running ingest)
+cache/
