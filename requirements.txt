@@ -21,6 +21,8 @@ pyyaml>=6.0
 streamlit>=1.30
 folium>=0.15
 streamlit-folium>=0.18
+fastapi>=0.110
+uvicorn>=0.27
 
 # HTTP / downloads
 requests>=2.31
