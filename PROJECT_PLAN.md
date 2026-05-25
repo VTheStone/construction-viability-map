@@ -64,18 +64,18 @@ Build an interactive map that helps users visually understand construction viabi
 
 All 10 maps go through the same automated vectorization pipeline. Each map has a YAML config specifying the legend colors and the corresponding zone codes/names.
 
-| Annex | Map | Subject |
-|---|---|---|
-| 5 | Map 01 | Urban perimeter |
-| 6 | Map 02 | Macrozoning (MZ-A, MZ-B, MZ-C, MZ-R) |
-| 7 | Map 03 | Zoning detail (ZA-1..12, ZB-1..3, ZC-1, ZR) |
-| 8 | Map 04 | Special-Interest Environmental Areas |
-| 9 | Map 05 | Special-Interest Urban Areas |
-| 10 | Map 06 | AEI Urbanístico + Road system |
-| 11 | Map 07 | Urban Equipment, Green Areas |
-| 12 | Map 08 | Social-Interest Areas + Risk Areas |
-| 13 | Map 09 | Transport Strategy |
-| 14 | Map 10 | Disturbance categories |
+| Annex | Map | Subject | Vectorized |
+|---|---|---|---|
+| 5 | Map 01 | Urban perimeter | ⬜ |
+| 6 | Map 02 | Macrozoning (MZ-A, MZ-B, MZ-C, MZ-R) | ✅ |
+| 7 | Map 03 | Zoning detail (ZA-1..12, ZB-1..3, ZC-1, ZR) | ✅ |
+| 8 | Map 04 | Special-Interest Environmental Areas | ⬜ |
+| 9 | Map 05 | Special-Interest Urban Areas | ⬜ |
+| 10 | Map 06 | AEI Urbanístico + Road system | ⬜ |
+| 11 | Map 07 | Urban Equipment, Green Areas | ⬜ |
+| 12 | Map 08 | Social-Interest Areas + Risk Areas | ✅ |
+| 13 | Map 09 | Transport Strategy | ⬜ |
+| 14 | Map 10 | Disturbance categories | ⬜ |
 
 > **Important note on zone granularity.** The PDF legends group subzones that share a color (e.g. "Zona de Estruturação e Qualificação Urbana (ZA-9 e ZA-10 e ZB-2)" is one legend entry, one color). The automated vectorizer respects this grouping: one polygon per color. The OCR-based label layer (point geometry) preserves the per-subzone code so filtering for "ZA-9" alone remains possible at the UI layer.
 
@@ -86,6 +86,7 @@ All 10 maps go through the same automated vectorization pipeline. Each map has a
 The pipeline produces a **collection of named layers**, each in its native format:
 
 ```
+
 data/processed/<region_slug>/
 ├── slope.tif                    # 2-band raster (degrees, percent) in projected CRS
 ├── slope.png                    # Colored visualization (green→red), web-ready
@@ -95,13 +96,14 @@ data/processed/<region_slug>/
 ├── boundary.geoparquet          # Municipal boundary
 ├── master_plan/
 │   ├── vectors/                 # GeoParquet per map (the canonical form)
-│   │   ├── map_01.geoparquet
 │   │   ├── map_02.geoparquet
+│   │   ├── map_03.geoparquet
 │   │   └── ...
 │   └── labels/                  # OCR'd zone codes as point layers
-│       ├── map_01_labels.geoparquet
+│       ├── map_02_labels.geoparquet
 │       └── ...
 └── manifest.json                # Index of all available layers + metadata
+
 ```
 
 The `manifest.json` is what the Streamlit app reads to populate the layer toggle panel. Each Master Plan entry references the vector (and optional label) layer, not a PNG.
@@ -111,6 +113,7 @@ The `manifest.json` is what the Streamlit app reads to populate the layer toggle
 ## 5. Repository layout
 
 ```
+
 construction-viability-map/
 ├── README.md
 ├── CONTRIBUTING.md
@@ -124,43 +127,43 @@ construction-viability-map/
 │   ├── regions/
 │   │   ├── _template.yaml
 │   │   └── sao_jose_sc.yaml
-│   └── master_plan/                      # NEW: per-map vectorization configs
+│   └── master_plan/
 │       └── sao_jose_sc/
-│           ├── map_01.yaml
+│           ├── _template.yaml
 │           ├── map_02.yaml
-│           └── ...
+│           ├── map_03.yaml
+│           └── map_08.yaml
 ├── src/
 │   ├── core/
-│   │   ├── __init__.py
+│   │   ├── init.py
 │   │   ├── config.py
 │   │   ├── ingest/                       # IBGE, OSM, Topodata
 │   │   ├── transform/
-│   │   │   ├── slope.py                  # DEM → slope (2-band GeoTIFF)
-│   │   │   ├── slope_visualize.py        # slope.tif → colored PNG
-│   │   │   ├── app_buffer.py             # waterways → APP polygons
-│   │   │   ├── master_plan_vectorize.py  # NEW: PDF JPEG → polygons (HSV segmentation)
-│   │   │   ├── master_plan_labels.py     # NEW: PDF JPEG → labeled points (OCR)
-│   │   │   └── manifest.py               # writes processed/manifest.json
-│   │   └── pipeline.py                   # orchestrator
+│   │   │   ├── slope.py
+│   │   │   ├── slope_visualize.py
+│   │   │   ├── app_buffer.py
+│   │   │   ├── master_plan_vectorize.py  # HSV segmentation → GeoParquet
+│   │   │   ├── master_plan_labels.py     # planned: OCR → point layer
+│   │   │   └── manifest.py
+│   │   └── pipeline.py
 │   ├── regions/
 │   │   ├── base.py
 │   │   └── sao_jose_sc/
 │   │       └── adapter.py
 │   └── app/
 │       ├── streamlit_app.py
-│       ├── static_server.py              # FastAPI sidecar (daemon thread)
-│       ├── layer_panel.py                # toggles and opacity per layer
-│       └── map_view.py                   # Folium with layer control; OSM always visible
+│       ├── static_server.py
+│       └── map_view.py
 ├── data/                                 # gitignored
 │   ├── raw/<region>/
 │   ├── interim/<region>/
 │   └── processed/<region>/
 ├── qgis_projects/                        # versioned (.points + .qgz)
-├── scripts/                              # one-off utilities
+├── scripts/
 │   ├── build_manifest.py
-│   ├── build_master_plan_pngs.py         # legacy — to be removed after vectorize works
-│   └── vectorize_master_plan.py          # NEW: CLI wrapper
+│   └── vectorize_master_plan.py
 └── tests/
+
 ```
 
 ---
@@ -175,57 +178,48 @@ class RegionAdapter(Protocol):
     bbox: tuple[float, float, float, float]
 
     def load_boundary(self) -> GeoDataFrame: ...
-    def load_buildings(self) -> GeoDataFrame: ...           # optional overlay
-    def load_master_plan_vectors(self) -> dict[str, GeoDataFrame]: ...
-    def load_master_plan_labels(self) -> dict[str, GeoDataFrame]: ...
+    def load_buildings(self) -> GeoDataFrame: ...
+    def load_master_plan_overlays(self) -> list[OverlayMetadata]: ...
 ```
 
-The old `load_master_plan_overlays()` (raster) and the stub `load_zoning_vectors()` / `load_risk_vectors()` are replaced by `load_master_plan_vectors()`, which returns a dict keyed by `map_id`.
+`load_master_plan_overlays` still exists (it tells the manifest builder which maps to look for vectors of). Once labels land, an additional `load_master_plan_labels` will return one point layer per map.
 
 ---
 
 ## 7. Streamlit UI
 
 ### Layout
-- **Left sidebar**: layer panel (toggles + opacity + lightweight thresholds)
+- **Left sidebar**: layer panel (toggles + opacity per layer)
 - **Center**: full-width Folium map. **OSM basemap is permanent** (always rendered, not a toggleable overlay).
-- **Bottom or right**: click-to-inspect panel showing values at the clicked point.
+- **Right (in-map)**: Leaflet LayerControl with checkboxes per zone, grouped by Master Plan layer. Implemented via `folium.plugins.GroupedLayerControl`.
 
-### Layer panel
+### Layer panel (sidebar)
 Grouped by category:
 
 **Terrain**
-- ☐ Slope (colored gradient) — slider for "highlight slope > X%"
-- ☐ Hillshade (optional)
+- ☐ Declividade
 
 **Environmental**
-- ☐ Hydrography (lines)
-- ☐ APP — Permanent Preservation Areas
+- ☐ APP — Áreas de Preservação Permanente
 
-**Master Plan (LC 173/2024)** — vector polygons, one toggle per map
-- ☐ Map 01 — Urban perimeter
-- ☐ Map 02 — Macrozoning
-- ☐ Map 03 — Zoning
-- ☐ ... (all 10)
-- ☐ Show zone labels (separate toggle; renders OCR'd "ZA-9" / "ZA-10" point labels over enabled Master Plan layers)
+**Master Plan (LC 173/2024)** — one toggle per map
+- ☐ PD: Macrozoneamento
+- ☐ PD: Zoneamento
+- ☐ PD: Interesse Social e Áreas de Risco
+- ☐ ... (more as YAMLs are produced)
 
-**Reference**
-- ☐ OSM buildings
+Each layer has an opacity slider. Master Plan layers additionally expose per-zone checkboxes in the in-map LayerControl (right-side panel) so individual zones can be hidden.
 
-Each Master Plan toggle exposes a **zone filter** (multi-select of zone codes for that map) and an opacity slider (default 60%).
-
-### Click-to-inspect
+### Click-to-inspect (planned, not yet implemented)
 When the user clicks a point on the map, a panel shows:
 - Slope (degrees / %)
 - Elevation
 - Inside APP? Distance to nearest watercourse
 - For each enabled Master Plan layer: the zone code and name at that point
-- Nearest road / neighborhood
 
-### Filters (lightweight)
-- Highlight pixels where `slope > X%` — overlay a single-color mask
+### Filters (planned)
+- Highlight pixels where `slope > X%`
 - Exclude APPs from view
-- Filter by zone code in any enabled Master Plan layer
 
 ---
 
@@ -240,14 +234,13 @@ When the user clicks a point on the map, a panel shows:
 | 4b | ✅ done | `app_buffer.py` — APP polygons from waterways |
 | 4c | ✅ done | `slope_visualize.py` — colorize slope into PNG |
 | 4d | ✅ done | `manifest.py` — write `processed/manifest.json` |
-| 4e | ✅ done (deprecated) | `master_plan_visualize.py` — raster PNGs; will be removed once vectorize replaces it |
-| **5a** | 🟡 **next** | **`master_plan_vectorize.py` — automated polygon extraction from PDF JPEGs (validate on Maps 02 + 03 + 08, then run on all 10)** |
-| **5b** | next | `master_plan_labels.py` — OCR-extracted zone labels as point layer |
-| **5c** | next | Update `RegionAdapter` and `manifest.py` to expose vector layers; drop raster overlays from the app |
-| 5d | next | App fix: OSM basemap always visible, polygons replace raster overlays |
-| 6 | future | Pipeline orchestrator (`make process REGION=sao_jose_sc`) |
-| 7 | future | Click-to-inspect panel + zone filter UI |
-| 8 | future | Polish, deploy, README with screenshots |
+| 5a | ✅ done | `master_plan_vectorize.py` — automated polygon extraction (HSV segmentation, validated on Maps 02/03/08) |
+| 5b | ✅ done | App consumes vector Master Plan layers; OSM permanent; per-zone toggles via GroupedLayerControl |
+| **5c** | 🟡 **next** | **YAML configs for the remaining 7 Master Plan maps** |
+| 6 | future | `master_plan_labels.py` — OCR-extracted zone labels as point layer |
+| 7 | future | Pipeline orchestrator (`make process REGION=sao_jose_sc`) |
+| 8 | future | Click-to-inspect panel + slope-threshold filter |
+| 9 | future | Polish, deploy, README with screenshots |
 
 ---
 
@@ -279,13 +272,13 @@ When the user clicks a point on the map, a panel shows:
 
 | Risk | Mitigation |
 |---|---|
-| Folium performance with 10+ vector overlays | Vector polygons are much lighter than rasters; serve via FastAPI as GeoJSON, simplify with Douglas-Peucker before delivery |
+| Folium performance with 10+ vector overlays | Vector polygons are much lighter than rasters; split by zone via GroupedLayerControl lets users hide what they don't need; Douglas-Peucker simplification keeps geometries thin |
 | Slope raster too coarse (30m Topodata) | Acceptable for MVP; could swap for 12.5m ALOS later |
-| Color segmentation fails on a specific map (low contrast, unusual palette) | Per-map YAML lets us tune tolerances; fallback is manual vectorization in QGIS (the old plan) |
+| Color segmentation fails on a specific map (low contrast, unusual palette) | Per-map YAML lets us tune saturation/value gates, hue tolerance, morphology kernels; grayscale zones (ZC-1) use a separate `match_by: low_saturation` path |
 | OCR misreads zone codes ("ZA-l" instead of "ZA-1") | Validate against a regex `^Z[ABCR]-?\d+$`; flag mismatches; allow YAML override per label |
-| Co-colored subzones merged into a single polygon | Documented limitation; per-subzone codes preserved in the label layer; backlog item to split using label positions as seeds |
-| Hillshade outside the municipality bleeds into "gray zone" segmentation | Clip the JPEG by the municipal boundary before segmentation |
-| User expects lot-level precision the data can't deliver | Explicit disclaimer in README + click-inspect shows raster values |
+| Co-colored subzones merged into a single polygon | Documented limitation; per-subzone codes preserved in the future label layer; backlog item to split using label positions as seeds |
+| Hillshade outside the municipality bleeds into segmentation | Boundary clip via `boundary.geoparquet` runs after polygonization, before output |
+| User expects lot-level precision the data can't deliver | Explicit disclaimer in README (to be added) + click-inspect shows underlying values |
 | Brazilian Forest Code APP requires variable buffer per river width | Use 30m default; document the simplification |
 
 ---
