@@ -1,0 +1,68 @@
+# Template for a Master Plan map vectorization config.
+#
+# Copy this file to map_NN.yaml (matching the map's number) and fill it in.
+# The vectorizer reads it to know which colors to look for and how to
+# clean up the resulting polygons.
+#
+# Each region has its own directory under config/master_plan/<region_slug>/.
+
+# Stable identifier matching the GeoTIFF filename prefix and the manifest entry.
+# Format: map_NN where NN is the map's annex number, zero-padded.
+map_id: map_NN
+
+# Path to the georeferenced GeoTIFF produced by Phase 3d (manual
+# georeferencing in QGIS). Relative to the project root.
+source_tif: data/raw/<region_slug>/master_plan/overlays/mapa_NN_<descriptor>.tif
+
+# Legend colors and the zones they represent.
+# `color_hex` is the EXACT RGB color used in the PDF legend. Extract it from
+# the PDF's vector drawings via pymupdf (see scripts/inspect_pdf_colors.py)
+# or sample from the legend rectangles in any vector editor.
+#
+# `code` and `name` follow LC 173/2024. Co-colored subzones share an entry:
+#   - code: "ZA-9/ZA-10/ZB-2"   <- the legal grouping from the legend
+#     name: "Zona de Estruturação e Qualificação Urbana"
+#     color_hex: "#fbb785"
+zones:
+  - code: ZONE-CODE
+    name: Human-readable name
+    color_hex: "#rrggbb"
+  # ... one entry per legend color
+
+# HSV gates for the "is this pixel colored at all?" mask.
+# Pixels with saturation <= saturation_min are treated as background
+# (paper, gray hillshade, contour lines).
+# Pixels with value <= value_min or >= value_max are treated as
+# background (near-black text, near-white paper).
+#
+# Defaults work for most maps. Raise saturation_min if too much
+# hillshade leaks in; lower it if a low-saturation zone (e.g. light
+# pastel) is being missed.
+saturation_min: 30
+value_min: 40
+value_max: 245
+
+# Morphological cleanup of each per-zone binary mask, in pixels.
+#
+# close_kernel_px fills holes inside polygons caused by streets,
+# rivers, and zone labels painted on top of the colored regions.
+# Should be a bit larger than the widest street + label height.
+#
+# open_kernel_px removes speckle and stray pixels from segmentation
+# noise. Should be smaller than close_kernel_px.
+#
+# Both are diameters of an elliptical kernel. Bump them up on maps
+# with denser street grids; bring them down on maps where adjacent
+# zones have very thin boundaries that closing might bridge.
+close_kernel_px: 25
+open_kernel_px: 15
+
+# Polygons smaller than this (in pixel²) are discarded as noise.
+# The vectorizer converts this to m² internally using the GeoTIFF's
+# pixel size, so the threshold scales correctly across maps.
+min_polygon_area_px2: 5000
+
+# Douglas-Peucker simplification tolerance, in pixels. Higher = simpler
+# polygons (fewer vertices, lighter GeoJSON over the wire).
+# 10 px is conservative and preserves visible detail at full zoom.
+simplify_tolerance_px: 10

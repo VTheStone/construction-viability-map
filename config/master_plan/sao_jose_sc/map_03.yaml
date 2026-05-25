@@ -1,0 +1,63 @@
+# Map 03 — Zoneamento (LC 173/2024 Annex 7)
+#
+# 7 legend entries. Several are color-grouped subzones (per the legend):
+# ZA-9/ZA-10/ZB-2 share orange; ZA-8/ZB-1 share pink; ZA-1..7 share
+# amber; ZA-11/ZA-12 share red. The vectorizer respects those groupings
+# — per-subzone splitting belongs to master_plan_labels.py.
+#
+# ZC-1 is the only chromatic gray (low saturation but non-zero), which
+# is why we keep saturation_min low and the value range narrow.
+
+map_id: map_03
+source_tif: data/raw/sao_jose_sc/master_plan/overlays/mapa_03_zoneamento.tif
+
+zones:
+  - code: ZR
+    name: Zona Rural
+    color_hex: "#88cd66"
+
+  - code: ZA-9/ZA-10/ZB-2
+    name: Zona de Estruturação e Qualificação Urbana
+    color_hex: "#fbb785"
+
+  - code: ZA-8/ZB-1
+    name: Zona de Contenção da Ocupação
+    color_hex: "#d593a7"
+
+  - code: ZA-1..ZA-7
+    name: Zona de Consolidação e Qualificação Urbana
+    color_hex: "#e6ab35"
+
+  - code: ZB-3
+    name: Zona de Especial Desenvolvimento Econômico
+    color_hex: "#8248a6"
+
+  - code: ZA-11/ZA-12
+    name: Zona de Qualificação Urbana e Paisagística
+    color_hex: "#cc6666"
+
+  - code: ZC-1
+    name: Zona Rururbana
+    color_hex: "#b1b1b1"
+    match_by: low_saturation
+    saturation_max: 8
+    value_min: 155
+    value_max: 195
+    min_area_px2: 300000
+
+# ZC-1 gray sits very close to the hillshade gray of the relief
+# layer. Saturation alone won't separate them. We rely on the
+# saturation gate plus the fact that ZC-1 occupies a single
+# contiguous region inside the municipal boundary — small leaks
+# elsewhere are filtered out by min_polygon_area_px2.
+saturation_min: 15
+value_min: 50
+value_max: 230
+
+# Map 03 has a denser street grid than Map 02. Streets are wider
+# in pixel terms because the rasterized DPI is the same. Slightly
+# larger closing kernel helps fill them.
+close_kernel_px: 30
+open_kernel_px: 15
+min_polygon_area_px2: 8000
+simplify_tolerance_px: 10
