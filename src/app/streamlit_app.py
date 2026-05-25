@@ -7,9 +7,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import atexit
 import json
-
-import atexit
-import json
 import socket
 import threading
 import time
@@ -208,12 +205,23 @@ for layer in layers:
     else:  # vector
         style = dict(layer.get("extras", {}).get("style", {}))
         style["fillOpacity"] = choice["opacity"]
+
+        # Master Plan layers carry per-feature colors in `color_hex`
+        # and a `zone_code` worth showing on hover. Other vector
+        # layers (e.g. APP) use a uniform style. They also split into
+        # one sublayer per zone so the LayerControl shows each zone
+        # as its own checkbox.
+        is_master_plan = layer["group"] == "master_plan"
         vector_specs.append(
             VectorLayerSpec(
                 name=layer["name"],
                 gdf=load_vector_layer(layer["path"]),
                 style=style,
                 show=True,
+                color_property="color_hex" if is_master_plan else None,
+                tooltip_fields=["zone_code", "zone_name"] if is_master_plan else [],
+                split_by="zone_code" if is_master_plan else None,
+                split_label="zone_name" if is_master_plan else None,
             )
         )
 
@@ -222,17 +230,16 @@ for layer in layers:
 
 st.title("Mapa de Viabilidade de Construção — São José/SC")
 
-if not raster_specs and not vector_specs:
-    st.info("Selecione pelo menos uma camada na lateral para ver o mapa.")
-else:
-    fmap = build_map(
-        center_lat=DEFAULT_CENTER_LAT,
-        center_lon=DEFAULT_CENTER_LON,
-        zoom=DEFAULT_ZOOM,
-        raster_layers=raster_specs,
-        vector_layers=vector_specs,
-    )
-    st_folium(fmap, width=None, height=750, returned_objects=[])
+# Always render the map. With no layers enabled, the user still sees
+# the OSM basemap centered on the region — this is the default state.
+fmap = build_map(
+    center_lat=DEFAULT_CENTER_LAT,
+    center_lon=DEFAULT_CENTER_LON,
+    zoom=DEFAULT_ZOOM,
+    raster_layers=raster_specs,
+    vector_layers=vector_specs,
+)
+st_folium(fmap, width=None, height=750, returned_objects=[])
 
 
 # ----- Debug (collapsible) ------------------------------------------------

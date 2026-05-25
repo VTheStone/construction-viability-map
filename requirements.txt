@@ -30,3 +30,8 @@ requests>=2.31
 # Visualization / image output
 matplotlib>=3.8
 pillow>=10.0
+
+# PDF parsing and image segmentation for Master Plan vectorization
+pymupdf>=1.24,<2.0
+opencv-python-headless>=4.10,<5.0
+pytesseract>=0.3.10,<0.4

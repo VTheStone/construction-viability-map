@@ -1,0 +1,36 @@
+# Map 02 — Macrozoneamento (LC 173/2024 Annex 6)
+#
+# 4 macrozones in flat colors. Easy case: distinct hues, large
+# contiguous polygons, no co-colored subzones.
+
+map_id: map_02
+source_tif: data/raw/sao_jose_sc/master_plan/overlays/mapa_02_macrozoneamento.tif
+
+zones:
+  - code: MZ-R
+    name: Macrozona Rural
+    color_hex: "#5fb56c"
+
+  - code: MZ-C
+    name: Macrozona C
+    color_hex: "#dbffbd"
+
+  - code: MZ-A
+    name: Macrozona A
+    color_hex: "#df9a95"
+
+  - code: MZ-B
+    name: Macrozona B
+    color_hex: "#ffb946"
+
+# MZ-C is a pale pastel green with very low saturation — drop the
+# floor so it doesn't get classified as background.
+saturation_min: 20
+
+# Defaults are fine for the rest.
+value_min: 40
+value_max: 245
+close_kernel_px: 25
+open_kernel_px: 15
+min_polygon_area_px2: 5000
+simplify_tolerance_px: 10
