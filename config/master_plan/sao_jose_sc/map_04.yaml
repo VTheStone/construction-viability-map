@@ -1,0 +1,39 @@
+# Map 04 — Área de Especial Interesse Ambiental (LC 173/2024 Annex 8)
+#
+# 3 zones in flat saturated colors over gray/white. Easy case:
+# dark green (AEIA-1 permanent preservation), light green (AEIA-2
+# conditional occupation), blue (AEIA-3 marine shoreline).
+
+map_id: map_04
+source_tif: data/raw/sao_jose_sc/master_plan/overlays/mapa_04_aei_ambiental.tif
+
+zones:
+  - code: AEIA-1
+    name: Área de Preservação Permanente
+    color_hex: "#34823d"
+
+  - code: AEIA-2
+    name: Área de Ocupação Condicionada
+    color_hex: "#a9cd66"
+
+  - code: AEIA-3
+    name: Orla Marítima
+    color_hex: "#6979ba"
+    # Filter out hydrography lines: rivers and streams in the PDF
+    # are drawn in a blue close to the AEIA-3 fill color. The real
+    # AEIA-3 (coastal strip) is two big continuous polygons (~4 km²
+    # each); the largest river-derived false positive comes in
+    # around ~420k m². Threshold sits comfortably between the two.
+    min_area_px2: 80000
+
+# Defaults work. AEIA-3 (blue) is the only zone that risks confusion
+# with the basemap's ocean/water; the boundary clip handles that.
+saturation_min: 30
+value_min: 40
+value_max: 245
+max_hue_distance: 20
+close_kernel_px: 25
+open_kernel_px: 15
+fill_holes: true
+min_polygon_area_px2: 5000
+simplify_tolerance_px: 10

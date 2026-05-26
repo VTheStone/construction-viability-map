@@ -1,0 +1,51 @@
+# Map 07 — Equipamentos, Áreas Verdes e Espaços Livres
+# (LC 173/2024 Annex 11)
+#
+# 3 saturated chromatic zones (purple, green, orange) over a light
+# gray basemap, plus 2 grays (AEIP-1A/1B transit corridors) that
+# need the low_saturation matching path — same trick as ZC-1 in
+# Map 03.
+
+map_id: map_07
+source_tif: data/raw/sao_jose_sc/master_plan/overlays/mapa_07_equipamentos_areas_verdes.tif
+
+zones:
+  - code: AEIP-3
+    name: Equipamento Urbano e Comunitário
+    color_hex: "#851caf"
+
+  - code: AEIP-4
+    name: Áreas Verdes e Espaços Livres
+    color_hex: "#2c8335"
+
+  - code: AEIP-5
+    name: Novas Áreas Públicas
+    color_hex: "#ff7e00"
+
+  - code: AEIP-1A
+    name: Transporte Coletivo Metropolitano
+    color_hex: "#b3b3b3"
+    match_by: low_saturation
+    saturation_max: 8
+    value_min: 165
+    value_max: 195
+    min_area_px2: 300000
+
+  - code: AEIP-1B
+    name: Transporte Coletivo Municipal
+    color_hex: "#cccccc"
+    match_by: low_saturation
+    saturation_max: 8
+    value_min: 195
+    value_max: 215
+    min_area_px2: 300000
+
+saturation_min: 30
+value_min: 40
+value_max: 245
+max_hue_distance: 18
+close_kernel_px: 15
+open_kernel_px: 8
+fill_holes: true
+min_polygon_area_px2: 2000
+simplify_tolerance_px: 5

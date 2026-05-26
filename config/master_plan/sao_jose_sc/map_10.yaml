@@ -1,0 +1,48 @@
+# Map 10 — Categorias de Incomodidades (LC 173/2024 Annex 14)
+#
+# The legend shows CI-A through CI-G (7 categories), but only 4
+# appear as filled polygons in the PDF: light blue (CI-F), magenta
+# purple (CI-G), and two grays (CI-A and CI-E). The remaining ones
+# (CI-B/C/D) are rendered only as line/outline features and are
+# out of scope for this color-segmentation pass — they may be
+# recovered later via a separate line vectorization.
+
+map_id: map_10
+source_tif: data/raw/sao_jose_sc/master_plan/overlays/mapa_10_incomodidades.tif
+
+zones:
+  - code: CI-F
+    name: Categoria de Incomodidade F
+    color_hex: "#4aade2"
+
+  - code: CI-G
+    name: Categoria de Incomodidade G
+    color_hex: "#af5193"
+
+  - code: CI-A
+    name: Categoria de Incomodidade A
+    color_hex: "#b3b3b3"
+    match_by: low_saturation
+    saturation_max: 8
+    value_min: 165
+    value_max: 195
+    min_area_px2: 300000
+
+  - code: CI-E
+    name: Categoria de Incomodidade E
+    color_hex: "#cccccc"
+    match_by: low_saturation
+    saturation_max: 8
+    value_min: 195
+    value_max: 215
+    min_area_px2: 300000
+
+saturation_min: 30
+value_min: 40
+value_max: 245
+max_hue_distance: 20
+close_kernel_px: 20
+open_kernel_px: 10
+fill_holes: true
+min_polygon_area_px2: 3000
+simplify_tolerance_px: 8

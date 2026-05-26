@@ -68,6 +68,27 @@ logger = logging.getLogger(__name__)
 
 # Default knobs. Per-map YAML can override any of these.
 DEFAULTS: dict[str, Any] = {
+    # Boundary clipping
+    # IBGE boundaries are sometimes slightly smaller than what the
+    # Master Plan PDFs depict (different cartographic sources). A
+    # small positive buffer absorbs legitimate polygons that fall a
+    # few hundred meters outside the IBGE limit while keeping the
+    # ocean and surrounding municipalities excluded.
+    "boundary_buffer_m": 500,
+    # After clipping, polygons whose bbox aspect ratio exceeds this
+    # threshold are discarded. Text labels and legend strips in the
+    # PDF are very elongated (~10:1); real zone polygons are not.
+    # Applied only to polygons that ended up partly or fully outside
+    # the un-buffered boundary — i.e. fringe polygons that survived
+    # only because of the buffer.
+    "fringe_max_aspect_ratio": 5.0,
+    # Additional fringe defense: a polygon whose centroid lies more
+    # than this many meters from the un-buffered boundary is treated
+    # as an outsider (logo, ocean decoration, neighboring city ink)
+    # and discarded. Legitimate polygons that extend past the IBGE
+    # limit have their centroid close to the limit; orphan splats in
+    # the ocean have centroids hundreds of meters away.
+    "fringe_max_centroid_distance_m": 150,
     # HSV gates for "this pixel is colored, not background"
     "saturation_min": 30,
     "value_min": 40,
@@ -107,16 +128,21 @@ class ZoneSpec:
     name: str
     color_hex: str
     color_rgb: tuple[int, int, int]
-    match_by: str = "hue"  # "hue" | "low_saturation"
-    saturation_max: int = 25  # only used when match_by == "low_saturation"
-    value_min: int = 150  # only used when match_by == "low_saturation"
-    value_max: int = 210  # only used when match_by == "low_saturation"
-    # Per-zone override of min_polygon_area_px2. None means "use the
-    # map-level default". Useful for low_saturation zones, which tend
-    # to claim small false-positive blobs inside other zones whenever
-    # hillshade desaturates them locally — a high floor (e.g. 300k)
-    # keeps only the genuine large grayscale polygon.
+    match_by: str = "hue"  # "hue" | "low_saturation" | "low_value"
+    saturation_max: int = 25      # low_saturation only
+    value_min: int = 150          # low_saturation and low_value
+    value_max: int = 210          # low_saturation and low_value
+    hue_target: int = 0           # low_value only: expected hue
+    hue_tolerance: int = 15       # low_value only: max hue distance
+    saturation_min_zone: int = 50 # low_value only: min saturation
     min_area_px2: int | None = None
+    # Optional bounding box filter [west, south, east, north] in the
+    # map's CRS (metres). Polygons whose centroid falls outside this
+    # box are discarded. Used to exclude false positives that share a
+    # color with the target zone but appear in a geographically
+    # implausible location (e.g. hillshade or text on the far side of
+    # the municipality).
+    bbox_filter: tuple[float, float, float, float] | None = None
 
 
 @dataclass(frozen=True)
@@ -182,8 +208,17 @@ def load_map_config(yaml_path: Path) -> dict[str, Any]:
             kwargs["value_min"] = int(z["value_min"])
         if "value_max" in z:
             kwargs["value_max"] = int(z["value_max"])
+        if "hue_target" in z:
+            kwargs["hue_target"] = int(z["hue_target"])
+        if "hue_tolerance" in z:
+            kwargs["hue_tolerance"] = int(z["hue_tolerance"])
+        if "saturation_min_zone" in z:
+            kwargs["saturation_min_zone"] = int(z["saturation_min_zone"])
         if "min_area_px2" in z:
             kwargs["min_area_px2"] = int(z["min_area_px2"])
+        if "bbox_filter" in z:
+            bf = z["bbox_filter"]
+            kwargs["bbox_filter"] = (float(bf[0]), float(bf[1]), float(bf[2]), float(bf[3]))
         zones.append(ZoneSpec(**kwargs))
 
     cfg = {**DEFAULTS, **{k: v for k, v in raw.items() if k in DEFAULTS}}
@@ -256,6 +291,25 @@ def _segment_by_hue(
 
     label_map = np.full(rgb.shape[:2], -1, dtype=np.int16)
 
+    # --- Pass 0: low_value zones (pre-empt hue winner-takes-all) ---
+    # These zones share hue with a brighter zone but are distinguished
+    # by having a much lower value (luminosity). We claim their pixels
+    # first so the hue pass doesn't assign them to the brighter rival.
+    for i, z in enumerate(zones):
+        if z.match_by != "low_value":
+            continue
+        hd = np.minimum(
+            np.abs(h.astype(np.int16) - z.hue_target),
+            180 - np.abs(h.astype(np.int16) - z.hue_target),
+        )
+        mask = (
+            (hd <= z.hue_tolerance)
+            & (s >= z.saturation_min_zone)
+            & (v >= z.value_min)
+            & (v <= z.value_max)
+        )
+        label_map[mask] = i
+
     # --- Pass 1: hue-strategy zones ---
     hue_indices = [i for i, z in enumerate(zones) if z.match_by == "hue"]
     if hue_indices:
@@ -266,13 +320,13 @@ def _segment_by_hue(
             target_hues.append(int(hsv_t[0]))
 
         valid_hue = (s > saturation_min) & (v > value_min) & (v < value_max)
+        unclaimed = label_map == -1  # don't overwrite Pass 0 assignments
         dists = np.stack([_hue_dist(h, t) for t in target_hues], axis=-1)
         winner_local = np.argmin(dists, axis=-1)
         min_dist = np.min(dists, axis=-1)
         in_palette = min_dist <= max_hue_distance
-        # winner_local indexes hue_indices; map back to global zone index
         winner_global = np.array(hue_indices, dtype=np.int16)[winner_local]
-        label_map = np.where(valid_hue & in_palette, winner_global, label_map).astype(np.int16)
+        label_map = np.where(valid_hue & in_palette & unclaimed, winner_global, label_map).astype(np.int16)
 
     # --- Pass 2: low_saturation zones, only on pixels not already claimed ---
     unclaimed = label_map == -1
@@ -436,11 +490,25 @@ def vectorize_map(
 
     # Optional boundary clip — eliminates polygons in the ocean or
     # neighboring municipalities that match a zone's hue by accident.
+    # The buffered boundary is what we clip against; the original
+    # boundary is kept separately to flag "fringe" polygons that only
+    # survived because of the buffer (used to filter out elongated
+    # text labels and legend strips).
     clip_geom = None
+    strict_boundary = None
+    boundary_buffer_m = float(cfg["boundary_buffer_m"])
+    fringe_max_ar = float(cfg["fringe_max_aspect_ratio"])
+    fringe_max_centroid_dist_m = float(cfg["fringe_max_centroid_distance_m"])
     if boundary_path is not None and boundary_path.exists():
         boundary_gdf = gpd.read_parquet(boundary_path).to_crs(crs)
-        clip_geom = boundary_gdf.geometry.unary_union
-        logger.info("  clipping output by boundary: %s", boundary_path.name)
+        strict_boundary = boundary_gdf.geometry.unary_union
+        clip_geom = strict_boundary.buffer(boundary_buffer_m) if boundary_buffer_m > 0 else strict_boundary
+        logger.info(
+            "  clipping output by boundary: %s (buffer=%.0fm, fringe AR limit=%.1f)",
+            boundary_path.name,
+            boundary_buffer_m,
+            fringe_max_ar,
+        )
 
     # 2. Segment by hue
     label_map = _segment_by_hue(
@@ -499,6 +567,33 @@ def vectorize_map(
             for piece in pieces:
                 if piece.area < zone_min_area * (pixel_size_m ** 2):
                     continue
+                # Bbox filter: if the zone declares a geographic bounding
+                # box, discard any piece whose centroid falls outside it.
+                if zone.bbox_filter is not None:
+                    cx, cy = piece.centroid.x, piece.centroid.y
+                    w, s, e, n = zone.bbox_filter
+                    if not (w <= cx <= e and s <= cy <= n):
+                        continue
+                # Fringe filter: a piece that doesn't intersect the
+                # un-buffered boundary only survived because of the
+                # buffer. Two ways to flag it as bogus:
+                #   - elongated bbox (text labels / legend strips)
+                #   - centroid sitting far from the actual boundary
+                #     (logos, ocean decorations, ink from neighboring
+                #     municipalities)
+                if (
+                    strict_boundary is not None
+                    and not piece.intersects(strict_boundary)
+                ):
+                    minx, miny, maxx, maxy = piece.bounds
+                    w = maxx - minx
+                    h = maxy - miny
+                    ar = max(w, h) / max(min(w, h), 1e-6)
+                    if ar > fringe_max_ar:
+                        continue
+                    centroid_dist = piece.centroid.distance(strict_boundary)
+                    if centroid_dist > fringe_max_centroid_dist_m:
+                        continue
                 rows.append(
                     {
                         "map_id": map_id,
