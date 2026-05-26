@@ -1,0 +1,103 @@
+# Map 05 — Área de Especial Interesse Urbanístico (LC 173/2024 Annex 9)
+#
+# 12 sub-areas AEIU-1 through AEIU-12. Hard case due to the number
+# of nearby colors. Several require per-zone min_area_px2 to filter
+# out rivers and road lines that share similar hues.
+#
+# AEIU-9 and AEIU-8 share nearly the same hue (both near-red, hue~0/1
+# in OpenCV). They are separated by value: AEIU-9 is dark red (#820000,
+# V~130) while AEIU-8 is bright red (#ff7270, V~255). We use a
+# custom value_max on AEIU-9 to claim only the dark pixels before
+# AEIU-8 wins them by hue proximity.
+#
+# AEIU-10 is near-black gray (#4f4f4f, S=0) — matched via low_saturation.
+
+map_id: map_05
+source_tif: data/raw/sao_jose_sc/master_plan/overlays/mapa_05_aei_urbanistico.tif
+
+zones:
+  - code: AEIU-1
+    name: Desenvolvimento Econômico
+    color_hex: "#c487f2"
+
+  - code: AEIU-2
+    name: Qualificação da Paisagem
+    color_hex: "#008491"
+
+  - code: AEIU-3
+    name: Histórico-Cultural
+    color_hex: " #cc9c59"
+
+  - code: AEIU-4
+    name: Contenção de Cheias
+    color_hex: "#63a5b7"
+    # Teal-blue color also appears as river hydrography. Real AEIU-4
+    # is a large polygon (~3.5M m²+); rivers are all below ~2M m².
+    # 30000 px² * 82 m²/px ≈ 2.46M m² threshold.
+    min_area_px2: 30000
+
+  - code: AEIU-5
+    name: Integração Municipal
+    color_hex: "#ffd100"
+
+  - code: AEIU-6
+    name: Manutenção da Ocupação Rururbana
+    color_hex: "#4f4f4f"
+    match_by: low_saturation
+    saturation_max: 25
+    value_min: 50
+    value_max: 110
+    min_area_px2: 300
+    # All legitimate AEIU-6 polygons cluster around the AEIU-1 area
+    # in the east of the municipality. False positives from hillshade
+    # and text appear west of easting 737000.
+    bbox_filter: [738000, 6950500, 740300, 6954500]
+
+  - code: AEIU-7
+    name: Reestruturação Av. das Torres
+    color_hex: "#fcbf70"
+
+  - code: AEIU-8
+    name: Reestruturação da BR-101
+    color_hex: "#ff7270"
+
+  - code: AEIU-9
+    name: Reestruturação do Eixo Metropolitano
+    color_hex: "#820000"
+    # Dark red — nearly same hue as AEIU-8 (bright red). Separated
+    # by value: AEIU-9 pixels are dark (V < 160); AEIU-8 pixels are
+    # bright (V > 200). We override value_max so only dark pixels
+    # are claimed before the hue winner-takes-all assigns them to
+    # AEIU-8. This requires a separate low_value match strategy.
+    match_by: low_value
+    value_min: 30
+    value_max: 160
+    hue_target: 0
+    hue_tolerance: 15
+    saturation_min_zone: 100
+
+  - code: AEIU-10
+    name: Reestruturação R. Gerôncio Thives
+    color_hex: "#897044"
+    min_area_px2: 2000
+    # Single polygon in the east. The false positive at centroid
+    # (734069, 6943067) is south of the real one — bbox excludes it.
+    bbox_filter: [735000, 6945000, 738000, 6948000]
+
+  - code: AEIU-11
+    name: Reestruturação R. Leoberto Leal
+    color_hex: "#fc8711"
+
+  - code: AEIU-12
+    name: Reestruturação Beira-Mar
+    color_hex: "#e8aacc"
+
+saturation_min: 25
+value_min: 30
+value_max: 245
+max_hue_distance: 12
+close_kernel_px: 20
+open_kernel_px: 10
+fill_holes: true
+min_polygon_area_px2: 3000
+simplify_tolerance_px: 8
