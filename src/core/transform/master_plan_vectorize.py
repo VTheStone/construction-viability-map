@@ -63,6 +63,8 @@ import yaml
 from rasterio.features import shapes as raster_shapes
 from shapely.geometry.base import BaseGeometry
 
+from src.core.transform.overlay_mask import detect_overlay
+
 logger = logging.getLogger(__name__)
 
 
@@ -98,15 +100,34 @@ DEFAULTS: dict[str, Any] = {
     # Above this, the pixel is treated as background — prevents off-palette
     # colors (e.g. blue ocean/text being snapped to the nearest legend color).
     "max_hue_distance": 20,
-    # Morphology kernel sizes (pixels)
-    "close_kernel_px": 25,
-    "open_kernel_px": 15,
+        # Morphology kernel sizes (pixels). Defaults are small because the
+    # overlay-detection step (see overlay_mask.py) removes most of the
+    # noise (streets, text, hillshade contour lines) before morphology
+    # runs. Maps with unusual artifacts can override per-YAML.
+    "close_kernel_px": 10,
+    "open_kernel_px": 4,
     # Fill holes inside each zone's binary mask after morphology.
     # Useful when zone polygons are riddled with white pixels (street
     # networks, text labels) that the closing kernel can't bridge.
     # Set to False for maps where small disjoint polygons of the same
     # color are expected (e.g. Map 08 risk areas).
     "fill_holes": True,
+    # --- Overlay pre-processing (see overlay_mask.detect_overlay) ---
+    # Each detector can be toggled off independently. When all four
+    # are False the pipeline behaves exactly like before this step
+    # was introduced.
+    "overlay_detect_streets": True,
+    "overlay_detect_text": True,
+    "overlay_detect_contours": True,
+    "overlay_detect_rivers": False,  # risky: several zones are blue
+    # Iterations of 3x3 majority voting that fill overlay pixels with
+    # their neighbors' labels. Each iteration extends the labeled area
+    # by ~1 pixel; 20 covers overlay regions up to ~40 px wide.
+    "overlay_propagation_max_iters": 20,
+    # Per-detector thresholds (see overlay_mask.DEFAULTS). Leave empty
+    # to use library defaults; override keys here to retune any single
+    # detector without redeclaring all of them.
+    "overlay_thresholds": {},
     # Polygon filters and simplification
     "min_polygon_area_px2": 5000,
     "simplify_tolerance_px": 10,
@@ -346,6 +367,56 @@ def _segment_by_hue(
     return label_map
 
 
+def _propagate_labels(
+    label_map: np.ndarray,
+    overlay_mask: np.ndarray,
+    max_iters: int = 20,
+) -> np.ndarray:
+    """Spread existing labels into overlay pixels via 3x3 majority voting.
+
+    Each iteration looks at every still-unassigned overlay pixel and
+    reassigns it to whichever already-classified label appears most
+    often in its 8-neighborhood. The process repeats until no pixel
+    changes or ``max_iters`` is reached.
+
+    Why not cv2.inpaint? Inpaint interpolates pixel values continuously,
+    which produces colors between zones and polygonizes poorly. We need
+    a clean categorical propagation so the downstream ``raster_shapes``
+    call produces sharp polygon boundaries.
+    """
+    result = label_map.copy().astype(np.int16)
+    result[overlay_mask] = -1  # ensure overlay pixels start unassigned
+
+    unique_labels = [int(v) for v in np.unique(result) if v != -1]
+    if not unique_labels:
+        return result
+
+    kernel = np.ones((3, 3), dtype=np.float32)
+
+    for _ in range(max_iters):
+        max_count = np.zeros(result.shape, dtype=np.float32)
+        winner = np.full(result.shape, -1, dtype=np.int16)
+
+        for lbl in unique_labels:
+            cnt = cv2.filter2D(
+                (result == lbl).astype(np.float32),
+                ddepth=-1,
+                kernel=kernel,
+                borderType=cv2.BORDER_CONSTANT,
+            )
+            better = cnt > max_count
+            np.copyto(max_count, cnt, where=better)
+            np.copyto(winner, np.int16(lbl), where=better)
+
+        update = (result == -1) & (max_count > 0)
+        if not update.any():
+            break
+
+        result = np.where(update, winner, result).astype(np.int16)
+
+    return result
+
+
 def _clean_mask(
     mask: np.ndarray, close_px: int, open_px: int, fill_holes: bool
 ) -> np.ndarray:
@@ -519,6 +590,18 @@ def vectorize_map(
         value_max=cfg["value_max"],
         max_hue_distance=cfg["max_hue_distance"],
     )
+
+    # 2b. Detect cartographic overlay (streets, text, hillshade
+    #     contour lines, rivers) and propagate neighboring zone labels
+    #     into those pixels. Skipped entirely when all detectors are off.
+    overlay = detect_overlay(rgb, cfg)
+    if overlay.any():
+        logger.info("  propagating labels into overlay pixels")
+        label_map = _propagate_labels(
+            label_map,
+            overlay,
+            max_iters=int(cfg["overlay_propagation_max_iters"]),
+        )
 
     # 3. Per-zone: morphology + polygonization
     close_px = int(cfg["close_kernel_px"])
