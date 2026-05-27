@@ -19,47 +19,102 @@ zones:
   - code: AEIU-1
     name: Desenvolvimento Econômico
     color_hex: "#c487f2"
+    # Three legitimate polygons: A/D (large west), B (small rectangle
+    # near AEIU-5-B), C (narrow strip SE near AEIU-4). Without the
+    # tightened match, ~3 spurious purple-ish blobs leak from hillshade
+    # halos. low_value matching with a higher saturation floor isolates
+    # the true purple from those near-grey artifacts.
+    match_by: low_value
+    hue_target: 137
+    hue_tolerance: 4
+    saturation_min_zone: 90
+    value_min: 100
+    value_max: 245
+    min_area_px2: 200
 
   - code: AEIU-2
     name: Qualificação da Paisagem
     color_hex: "#008491"
+    # AEIU-2 (teal escuro, V~145, S~255). Restringir a S>=170 exclui
+    # hillshade desaturado que antes pegava carona no hue pass.
+    match_by: low_value
+    value_min: 80
+    value_max: 160
+    hue_target: 92
+    hue_tolerance: 8
+    saturation_min_zone: 170
+    min_area_px2: 1000
 
   - code: AEIU-3
     name: Histórico-Cultural
-    color_hex: " #cc9c59"
+    color_hex: "#cc9c59"
+    match_by: low_value
+    value_min: 150
+    value_max: 230
+    hue_target: 17
+    hue_tolerance: 8
+    saturation_min_zone: 70
+    min_area_px2: 200
+    bbox_filter: [732000, 6940000, 737000, 6944000]
 
   - code: AEIU-4
     name: Contenção de Cheias
     color_hex: "#63a5b7"
-    # Teal-blue color also appears as river hydrography. Real AEIU-4
-    # is a large polygon (~3.5M m²+); rivers are all below ~2M m².
-    # 30000 px² * 82 m²/px ≈ 2.46M m² threshold.
-    min_area_px2: 30000
+    match_by: low_value
+    value_min: 140
+    value_max: 200          # was 210
+    hue_target: 96
+    hue_tolerance: 6        # was 10 — bem mais estrito
+    saturation_min_zone: 70 # was 50 — exclui desaturado bridging
+    min_area_px2: 2000      # was 1000 — filtra fragmentos pequenos
+    bbox_filter: [729000, 6944000, 734000, 6947000]
 
   - code: AEIU-5
     name: Integração Municipal
     color_hex: "#ffd100"
+    match_by: low_value
+    value_min: 140
+    value_max: 220
+    hue_target: 24
+    hue_tolerance: 3        # was 6 — exclui hue 28+ (verde de AEIU-11)
+    saturation_min_zone: 110
+    min_area_px2: 3000
 
   - code: AEIU-6
     name: Manutenção da Ocupação Rururbana
     color_hex: "#4f4f4f"
     match_by: low_saturation
-    saturation_max: 25
-    value_min: 50
-    value_max: 110
-    min_area_px2: 300
-    # All legitimate AEIU-6 polygons cluster around the AEIU-1 area
-    # in the east of the municipality. False positives from hillshade
-    # and text appear west of easting 737000.
-    bbox_filter: [738000, 6950500, 740300, 6954500]
+    saturation_max: 0
+    value_min: 60
+    value_max: 110              # was 130 — corta hillshade rural mais claro
+    min_area_px2: 205            # was 150 — filtra falsos médios
+    bbox_filter: [727000, 6946000, 729500, 6950500]  # south expandido pra incluir (..., 6946286)
 
   - code: AEIU-7
     name: Reestruturação Av. das Torres
     color_hex: "#fcbf70"
+    # 7-A em (733864, 6948387) e 7-B em (732467, 6950778).
+    # bbox envolvente com margem de ~500m em cada direção.
+    match_by: low_value
+    value_min: 140          # captura AEIU-7 sob hillshade
+    value_max: 245
+    hue_target: 17
+    hue_tolerance: 5
+    saturation_min_zone: 100  # AEIU-10 S=80 (excluído)
+    min_area_px2: 1000
+    bbox_filter: [731500, 6947500, 735000, 6951500]
 
   - code: AEIU-8
     name: Reestruturação da BR-101
     color_hex: "#ff7270"
+    match_by: low_value
+    value_min: 130          # bem permissivo
+    value_max: 245
+    hue_target: 0
+    hue_tolerance: 10
+    saturation_min_zone: 80
+    min_area_px2: 500
+    bbox_filter: [728000, 6943000, 745000, 6955000]   # bbox enorme
 
   - code: AEIU-9
     name: Reestruturação do Eixo Metropolitano
@@ -97,7 +152,20 @@ value_min: 30
 value_max: 245
 max_hue_distance: 12
 close_kernel_px: 20
-open_kernel_px: 10
+open_kernel_px: 4
 fill_holes: true
 min_polygon_area_px2: 3000
 simplify_tolerance_px: 8
+
+# Overlay tuning for this map
+# - contours: OFF — the hillshade in Map 05 is continuous relief
+#   shading, not isolines. Black-tophat misclassifies the shading
+#   patches as "thin features" and eats pixels inside legitimate zones.
+# - propagation_max_iters: reduced from 20 to 6 so labels don't leak
+#   ~360 m beyond their true polygon. 6 iters ≈ 110 m at 9 m/px.
+# - text_value_max: tightened so medium-gray hillshade pixels stop
+#   being read as text.
+overlay_detect_contours: false
+overlay_propagation_max_iters: 3
+overlay_thresholds:
+  text_value_max: 50
