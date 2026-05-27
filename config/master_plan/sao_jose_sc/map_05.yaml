@@ -1,17 +1,4 @@
 # Map 05 — Área de Especial Interesse Urbanístico (LC 173/2024 Annex 9)
-#
-# 12 sub-areas AEIU-1 through AEIU-12. Hard case due to the number
-# of nearby colors. Several require per-zone min_area_px2 to filter
-# out rivers and road lines that share similar hues.
-#
-# AEIU-9 and AEIU-8 share nearly the same hue (both near-red, hue~0/1
-# in OpenCV). They are separated by value: AEIU-9 is dark red (#820000,
-# V~130) while AEIU-8 is bright red (#ff7270, V~255). We use a
-# custom value_max on AEIU-9 to claim only the dark pixels before
-# AEIU-8 wins them by hue proximity.
-#
-# AEIU-10 is near-black gray (#4f4f4f, S=0) — matched via low_saturation.
-
 map_id: map_05
 source_tif: data/raw/sao_jose_sc/master_plan/overlays/mapa_05_aei_urbanistico.tif
 
@@ -19,11 +6,6 @@ zones:
   - code: AEIU-1
     name: Desenvolvimento Econômico
     color_hex: "#c487f2"
-    # Three legitimate polygons: A/D (large west), B (small rectangle
-    # near AEIU-5-B), C (narrow strip SE near AEIU-4). Without the
-    # tightened match, ~3 spurious purple-ish blobs leak from hillshade
-    # halos. low_value matching with a higher saturation floor isolates
-    # the true purple from those near-grey artifacts.
     match_by: low_value
     hue_target: 137
     hue_tolerance: 4
@@ -35,8 +17,6 @@ zones:
   - code: AEIU-2
     name: Qualificação da Paisagem
     color_hex: "#008491"
-    # AEIU-2 (teal escuro, V~145, S~255). Restringir a S>=170 exclui
-    # hillshade desaturado que antes pegava carona no hue pass.
     match_by: low_value
     value_min: 80
     value_max: 160
@@ -62,11 +42,11 @@ zones:
     color_hex: "#63a5b7"
     match_by: low_value
     value_min: 140
-    value_max: 200          # was 210
+    value_max: 200
     hue_target: 96
-    hue_tolerance: 6        # was 10 — bem mais estrito
-    saturation_min_zone: 70 # was 50 — exclui desaturado bridging
-    min_area_px2: 2000      # was 1000 — filtra fragmentos pequenos
+    hue_tolerance: 6
+    saturation_min_zone: 70
+    min_area_px2: 2000
     bbox_filter: [729000, 6944000, 734000, 6947000]
 
   - code: AEIU-5
@@ -76,7 +56,7 @@ zones:
     value_min: 140
     value_max: 220
     hue_target: 24
-    hue_tolerance: 3        # was 6 — exclui hue 28+ (verde de AEIU-11)
+    hue_tolerance: 3
     saturation_min_zone: 110
     min_area_px2: 3000
 
@@ -86,66 +66,70 @@ zones:
     match_by: low_saturation
     saturation_max: 0
     value_min: 60
-    value_max: 110              # was 130 — corta hillshade rural mais claro
-    min_area_px2: 205            # was 150 — filtra falsos médios
-    bbox_filter: [727000, 6946000, 729500, 6950500]  # south expandido pra incluir (..., 6946286)
+    value_max: 110
+    min_area_px2: 205
+    bbox_filter: [727000, 6946000, 729500, 6950500]
 
   - code: AEIU-7
     name: Reestruturação Av. das Torres
     color_hex: "#fcbf70"
-    # 7-A em (733864, 6948387) e 7-B em (732467, 6950778).
-    # bbox envolvente com margem de ~500m em cada direção.
     match_by: low_value
-    value_min: 140          # captura AEIU-7 sob hillshade
+    value_min: 140
     value_max: 245
     hue_target: 17
     hue_tolerance: 5
-    saturation_min_zone: 100  # AEIU-10 S=80 (excluído)
+    saturation_min_zone: 100
     min_area_px2: 1000
     bbox_filter: [731500, 6947500, 735000, 6951500]
 
   - code: AEIU-8
     name: Reestruturação da BR-101
-    color_hex: "#ff7270"
+    color_hex: "#da605f"
     match_by: low_value
-    value_min: 130          # bem permissivo
+    value_min: 170
     value_max: 245
     hue_target: 0
-    hue_tolerance: 10
-    saturation_min_zone: 80
-    min_area_px2: 500
-    bbox_filter: [728000, 6943000, 745000, 6955000]   # bbox enorme
+    hue_tolerance: 2
+    saturation_min_zone: 100
+    min_area_px2: 3000
 
   - code: AEIU-9
     name: Reestruturação do Eixo Metropolitano
-    color_hex: "#820000"
-    # Dark red — nearly same hue as AEIU-8 (bright red). Separated
-    # by value: AEIU-9 pixels are dark (V < 160); AEIU-8 pixels are
-    # bright (V > 200). We override value_max so only dark pixels
-    # are claimed before the hue winner-takes-all assigns them to
-    # AEIU-8. This requires a separate low_value match strategy.
+    color_hex: "#6d0e0f"
     match_by: low_value
-    value_min: 30
-    value_max: 160
+    value_min: 50          
+    value_max: 140         
     hue_target: 0
-    hue_tolerance: 15
-    saturation_min_zone: 100
+    hue_tolerance: 2
+    saturation_min_zone: 200 
 
   - code: AEIU-10
     name: Reestruturação R. Gerôncio Thives
     color_hex: "#897044"
     min_area_px2: 2000
-    # Single polygon in the east. The false positive at centroid
-    # (734069, 6943067) is south of the real one — bbox excludes it.
     bbox_filter: [735000, 6945000, 738000, 6948000]
 
   - code: AEIU-11
     name: Reestruturação R. Leoberto Leal
-    color_hex: "#fc8711"
+    color_hex: "#9db25c"
+    match_by: low_value
+    value_min: 130
+    value_max: 210
+    hue_target: 37
+    hue_tolerance: 8
+    saturation_min_zone: 80
+    min_area_px2: 1500
 
   - code: AEIU-12
     name: Reestruturação Beira-Mar
-    color_hex: "#e8aacc"
+    color_hex: "#c891ae"
+    match_by: low_value
+    value_min: 150
+    value_max: 230
+    hue_target: 164
+    hue_tolerance: 0
+    saturation_min_zone: 50
+    min_area_px2: 5000
 
 saturation_min: 25
 value_min: 30
