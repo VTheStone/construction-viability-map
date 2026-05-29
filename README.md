@@ -1,22 +1,31 @@
 # Construction Viability Map
 
-> Interactive map of construction viability per urban lot, with independent filters across physical and legal characteristics.
-
-**Status:** 🚧 Under development — Phase 1 (Setup)
+> Interactive web map that helps visualize construction viability across a municipality through independent, toggleable overlay layers — terrain slope, environmental constraints, and Master Plan zoning.
 
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Status](https://img.shields.io/badge/status-WIP-orange.svg)
 
-## About
+![São José/SC Master Plan zones rendered as interactive vector overlays on the OSM basemap](docs/example_map.png)
 
-This project builds an interactive map showing construction viability for lots in a city, letting the user filter by:
+*Example: Master Plan special-interest zones (LC 173/2024) of São José/SC, served as interactive vector overlays over the OpenStreetMap basemap.*
+
+## Objective
+
+The goal is an interactive map that communicates construction viability across a city, not as a precomputed verdict per lot, but as a set of independent layers the user explores and toggles directly:
 
 - **Physical characteristics**: terrain slope, permanent preservation areas (APP), natural-disaster risk areas
-- **Legal characteristics**: zoning from the municipal Master Plan
-- **Urban accessibility**: distance to main roads, schools, healthcare facilities
+- **Legal characteristics**: zoning and special-interest areas from the municipal Master Plan
+- **Urban context**: roads, hydrography and buildings from OpenStreetMap
 
 The architecture is **modular per municipality**: new cities can be added without touching the core code.
+
+## Deliverables
+
+- A geospatial pipeline: **ingest** (IBGE, OSM, Topodata) → **transform** (slope raster, APP buffers, automated Master Plan vectorization) → **publish** as interactive layers.
+- Master Plan PDF annexes turned into **vector polygon layers** (GeoParquet) via HSV color segmentation — no manual digitizing.
+- A **Streamlit + Folium** app with a permanent OSM basemap, per-layer opacity, and per-zone toggles.
+- A reusable **Adapter Pattern** so a second municipality plugs in without refactoring the core.
 
 ### Pilot city
 
@@ -82,7 +91,7 @@ See [`CONTRIBUTING.md`](./CONTRIBUTING.md) (coming soon).
 ## Known limitations
 
 - **Lots**: São José/SC has no public cadastral dataset. This project uses OpenStreetMap building footprints + synthetic blocks as a proxy. **It is not a substitute for official municipal records.**
-- **Zoning**: in the current version, the Master Plan maps (Map 03 and Map 08) are displayed as a georeferenced raster overlay. Full vectorization is on the backlog.
+- **Zoning**: Master Plan maps are automatically vectorized via HSV color segmentation of the official PDF annexes (LC 173/2024). Subzones that share a single legend color are merged into one polygon; per-subzone disambiguation via OCR labels is on the roadmap.
 - **DEM**: uses Topodata from INPE (~30 m resolution), adequate for municipal-level analysis but coarse for intra-block analysis.
 
 ## License
