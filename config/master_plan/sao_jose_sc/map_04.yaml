@@ -19,12 +19,13 @@ zones:
   - code: AEIA-3
     name: Orla Marítima
     color_hex: "#6979ba"
-    # Filter out hydrography lines: rivers and streams in the PDF
-    # are drawn in a blue close to the AEIA-3 fill color. The real
-    # AEIA-3 (coastal strip) is two big continuous polygons (~4 km²
-    # each); the largest river-derived false positive comes in
-    # around ~420k m². Threshold sits comfortably between the two.
-    min_area_px2: 80000
+    match_by: low_value
+    value_min: 120
+    value_max: 215
+    hue_target: 114
+    hue_tolerance: 7
+    saturation_min_zone: 95
+    min_area_px2: 40000
 
 # Defaults work. AEIA-3 (blue) is the only zone that risks confusion
 # with the basemap's ocean/water; the boundary clip handles that.
@@ -32,8 +33,9 @@ saturation_min: 30
 value_min: 40
 value_max: 245
 max_hue_distance: 20
-close_kernel_px: 25
-open_kernel_px: 15
-fill_holes: true
+close_kernel_px: 12
+open_kernel_px: 6
+fill_holes: false
 min_polygon_area_px2: 5000
 simplify_tolerance_px: 10
+overlay_propagation_max_iters: 0

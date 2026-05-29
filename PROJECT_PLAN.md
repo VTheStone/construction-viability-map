@@ -2,7 +2,7 @@
 
 > Master planning document. Describes the current architecture, scope, and roadmap. Reference point for resuming work in future sessions.
 
-**Last updated:** 2026-05-24
+**Last updated:** 2026-05-28
 
 ---
 
@@ -29,10 +29,10 @@ Build an interactive map that helps users visually understand construction viabi
 | Viability model | Independent toggleable layers + lightweight thresholds | User adjusts opacity, toggles layers on/off, applies simple filters (e.g. "highlight slope > 30%") |
 | Stack | Python + Streamlit + Folium | Dynamic UI, integrated Leaflet, free deploy on Streamlit Cloud |
 | Architecture | Multi-municipality via Adapter Pattern | New cities plug in without changing the core |
-| Static asset serving | FastAPI sidecar on localhost (daemon thread) | Streamlit's websocket payload limit (200 MB) is too small for inline base64; serving PNGs/GeoJSONs via HTTP lets us scale to all 10 maps |
+| Static asset serving | FastAPI sidecar on localhost (daemon thread) | Streamlit's websocket payload limit (200 MB) is too small for inline base64; serving PNGs/GeoJSONs via HTTP lets us scale to the full set of Master Plan maps |
 | Dependencies | pip + venv + requirements.txt | Absolute simplicity, no extra tooling |
 | Repository | Public GitHub | Portfolio + supports open-source contribution |
-| Master Plan (PDFs) | **Automated vectorization via color segmentation** — all 10 maps become vector polygon layers; raster PNGs are deprecated as an end-user artifact | The PDFs are vector containers with one embedded JPEG per map and a vector legend with exact RGB colors. Segmenting that JPEG by HSV-distance to legend colors yields clean polygons. This replaces the planned manual QGIS work entirely. |
+| Master Plan (PDFs) | **Automated vectorization via color segmentation** — the in-scope maps become vector polygon layers; raster PNGs are deprecated as an end-user artifact | The PDFs are vector containers with one embedded JPEG per map and a vector legend with exact RGB colors. Segmenting that JPEG by HSV-distance to legend colors yields clean polygons. This replaces the planned manual QGIS work entirely. |
 | Code language | English | Open-source best practice |
 | Documentation language | English | Maximum reach for portfolio and contributors |
 
@@ -62,17 +62,17 @@ Build an interactive map that helps users visually understand construction viabi
 
 ### Map annexes (LC 173/2024)
 
-All 10 maps go through the same automated vectorization pipeline. Each map has a YAML config specifying the legend colors and the corresponding zone codes/names.
+Most maps go through the same automated vectorization pipeline. Each in-scope map has a YAML config specifying the legend colors and the corresponding zone codes/names. Two annexes are deliberately excluded: Map 01 (urban perimeter — already covered by the municipal boundary) and Map 06 (AEI Urbanístico + road system — its zoning duplicates Map 05 and its road layer duplicates the OSM basemap).
 
 | Annex | Map | Subject | Vectorized |
 |---|---|---|---|
-| 5 | Map 01 | Urban perimeter | ⬜ |
+| 5 | Map 01 | Urban perimeter | ➖ out of scope |
 | 6 | Map 02 | Macrozoning (MZ-A, MZ-B, MZ-C, MZ-R) | ✅ |
 | 7 | Map 03 | Zoning detail (ZA-1..12, ZB-1..3, ZC-1, ZR) | ✅ |
-| 8 | Map 04 | Special-Interest Environmental Areas | ⬜ |
-| 9 | Map 05 | Special-Interest Urban Areas | ⬜ |
-| 10 | Map 06 | AEI Urbanístico + Road system | ⬜ |
-| 11 | Map 07 | Urban Equipment, Green Areas | ⬜ |
+| 8 | Map 04 | Special-Interest Environmental Areas | ✅ |
+| 9 | Map 05 | Special-Interest Urban Areas | ✅ |
+| 10 | Map 06 | AEI Urbanístico + Road system | ➖ out of scope |
+| 11 | Map 07 | Urban Equipment, Green Areas | 🟡 in progress |
 | 12 | Map 08 | Social-Interest Areas + Risk Areas | ✅ |
 | 13 | Map 09 | Transport Strategy | ⬜ |
 | 14 | Map 10 | Disturbance categories | ⬜ |
@@ -234,9 +234,9 @@ When the user clicks a point on the map, a panel shows:
 | 4b | ✅ done | `app_buffer.py` — APP polygons from waterways |
 | 4c | ✅ done | `slope_visualize.py` — colorize slope into PNG |
 | 4d | ✅ done | `manifest.py` — write `processed/manifest.json` |
-| 5a | ✅ done | `master_plan_vectorize.py` — automated polygon extraction (HSV segmentation, validated on Maps 02/03/08) |
+| 5a | ✅ done | `master_plan_vectorize.py` — automated polygon extraction (HSV segmentation + overlay detection/label propagation, validated on Maps 02/03/04/05/08) |
 | 5b | ✅ done | App consumes vector Master Plan layers; OSM permanent; per-zone toggles via GroupedLayerControl |
-| **5c** | 🟡 **next** | **YAML configs for the remaining 7 Master Plan maps** |
+| **5c** | 🟡 **in progress** | **YAML configs for the in-scope Master Plan maps. Done: 02, 03, 04, 05, 08. Adjusting: 07. Pending: 09, 10. Out of scope: 01, 06.** |
 | 6 | future | `master_plan_labels.py` — OCR-extracted zone labels as point layer |
 | 7 | future | Pipeline orchestrator (`make process REGION=sao_jose_sc`) |
 | 8 | future | Click-to-inspect panel + slope-threshold filter |
