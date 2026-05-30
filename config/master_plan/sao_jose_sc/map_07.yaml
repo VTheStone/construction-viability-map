@@ -1,10 +1,10 @@
 # Map 07 — Equipamentos, Áreas Verdes e Espaços Livres
 # (LC 173/2024 Annex 11)
 #
-# 3 saturated chromatic zones (purple, green, orange) over a light
-# gray basemap, plus 2 grays (AEIP-1A/1B transit corridors) that
-# need the low_saturation matching path — same trick as ZC-1 in
-# Map 03.
+# Three highly saturated chromatic zones (purple, green, orange) over
+# a gray hillshade. Polygons are block-scale (small), so morphology
+# is conservative and overlay propagation is disabled to preserve
+# polygon shapes faithfully.
 
 map_id: map_07
 source_tif: data/raw/sao_jose_sc/master_plan/overlays/mapa_07_equipamentos_areas_verdes.tif
@@ -13,39 +13,27 @@ zones:
   - code: AEIP-3
     name: Equipamento Urbano e Comunitário
     color_hex: "#851caf"
+    min_area_px2: 100
 
   - code: AEIP-4
     name: Áreas Verdes e Espaços Livres
     color_hex: "#2c8335"
+    min_area_px2: 100
 
   - code: AEIP-5
     name: Novas Áreas Públicas
     color_hex: "#ff7e00"
+    min_area_px2: 100
 
-  - code: AEIP-1A
-    name: Transporte Coletivo Metropolitano
-    color_hex: "#b3b3b3"
-    match_by: low_saturation
-    saturation_max: 8
-    value_min: 165
-    value_max: 195
-    min_area_px2: 300000
-
-  - code: AEIP-1B
-    name: Transporte Coletivo Municipal
-    color_hex: "#cccccc"
-    match_by: low_saturation
-    saturation_max: 8
-    value_min: 195
-    value_max: 215
-    min_area_px2: 300000
-
-saturation_min: 30
-value_min: 40
+# Block-scale polygons: small min_area + small kernels + no fill_holes
+# (no large interiors to fill) + no propagation (no expansion).
+saturation_min: 80           # exclui hillshade gray (S<30 típico)
+value_min: 50
 value_max: 245
-max_hue_distance: 18
-close_kernel_px: 15
-open_kernel_px: 8
-fill_holes: true
-min_polygon_area_px2: 2000
-simplify_tolerance_px: 5
+max_hue_distance: 10         # 3 zones are >48 hue units apart — tight is safe
+close_kernel_px: 5
+open_kernel_px: 3
+fill_holes: false
+min_polygon_area_px2: 100    # ~8.200 m² (block-scale)
+simplify_tolerance_px: 3
+overlay_propagation_max_iters: 0
