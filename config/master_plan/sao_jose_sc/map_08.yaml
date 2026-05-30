@@ -1,14 +1,10 @@
 # Map 08 — Áreas de Especial Interesse Social e Áreas de Risco
 # (LC 173/2024 Annex 12)
 #
-# Outlier case for the vectorizer: the zones are small, scattered
-# polygons over a mostly-gray hillshade. Most of the map is *not*
-# a zone — only the highlighted AEIS/risk areas are.
-#
-# Three colored categories plus a gray one (AEIS-4 Prioritária para
-# Produção de HIS). The gray one shares hue with hillshade — same
-# challenge as ZC-1 on Map 03, but worse because AEIS-4 polygons
-# are smaller.
+# Three highly saturated chromatic zones (red, yellow, purple) over
+# a gray hillshade. Polygons are block-scale (small and scattered),
+# so morphology is conservative and overlay propagation is disabled
+# to preserve polygon shapes faithfully.
 
 map_id: map_08
 source_tif: data/raw/sao_jose_sc/master_plan/overlays/mapa_08_risco.tif
@@ -17,32 +13,27 @@ zones:
   - code: AEIS-1
     name: AEIS-1 (Especial Interesse Social 1)
     color_hex: "#c60815"
+    min_area_px2: 100
 
   - code: AEIS-2
     name: AEIS-2 (Especial Interesse Social 2)
     color_hex: "#ffc950"
+    min_area_px2: 100
 
   - code: AEIS-3
     name: AEIS-3 (Especial Interesse Social 3)
     color_hex: "#d37ed3"
+    min_area_px2: 100
 
-  # AEIS-4 (gray) is intentionally excluded for now: indistinguishable
-  # from hillshade without extra signals. Add it later with a
-  # boundary-clipped pass once master_plan_labels.py is in place and
-  # can seed a watershed segmentation. Tracked in the project backlog.
-
-# These three colors are heavily saturated against a gray background,
-# so we can crank up saturation_min to keep hillshade out.
-saturation_min: 60
-value_min: 40
+# Block-scale polygons: small min_area + small kernels + no fill_holes
+# + no propagation (preserves shapes faithfully).
+saturation_min: 70           # AEIS-3 has S~102 — keep some margin under
+value_min: 50
 value_max: 245
-
-# Polygons are small. Use a smaller closing kernel — large kernels
-# would merge adjacent risk areas into a single blob.
-close_kernel_px: 10
-open_kernel_px: 5
-
-# Lower minimum area: AEIS polygons can be quite small (couple of
-# city blocks).
-min_polygon_area_px2: 2000
-simplify_tolerance_px: 5
+max_hue_distance: 10         # 3 zones >50 hue units apart — tight is safe
+close_kernel_px: 5
+open_kernel_px: 3
+fill_holes: false
+min_polygon_area_px2: 100
+simplify_tolerance_px: 3
+overlay_propagation_max_iters: 0
