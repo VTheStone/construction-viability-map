@@ -31,7 +31,7 @@ zones:
     # Legit CI-F is the SW valley + Centro Empresarial. NE bay/ocean
     # is excluded by the eastern + northern limits. (Data-driven from
     # source GeoTIFF blob centroids.)
-    bbox_filter: [726000, 6940000, 734100, 6950500]
+    bbox_filter: [726000, 6940000, 733300, 6950500]
 
   - code: CI-G
     name: Categoria de Incomodidade G
