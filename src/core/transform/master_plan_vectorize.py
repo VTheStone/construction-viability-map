@@ -164,6 +164,14 @@ class ZoneSpec:
     # implausible location (e.g. hillshade or text on the far side of
     # the municipality).
     bbox_filter: tuple[float, float, float, float] | None = None
+    # Optional minimum solidity (polygon area / convex-hull area) in
+    # 0..1. Discards sparse, dendritic shapes that share a zone's color
+    # but are not compact areas — typically hydrography line networks
+    # (rivers) drawn in the same blue as a water-related zone. Compact
+    # blobs score high (~0.5-1.0); river dendrites score low (<0.45).
+    # None (default) disables the filter, so existing maps are
+    # unaffected.
+    min_solidity: float | None = None
 
 
 @dataclass(frozen=True)
@@ -240,6 +248,8 @@ def load_map_config(yaml_path: Path) -> dict[str, Any]:
         if "bbox_filter" in z:
             bf = z["bbox_filter"]
             kwargs["bbox_filter"] = (float(bf[0]), float(bf[1]), float(bf[2]), float(bf[3]))
+        if "min_solidity" in z:
+            kwargs["min_solidity"] = float(z["min_solidity"])
         zones.append(ZoneSpec(**kwargs))
 
     cfg = {**DEFAULTS, **{k: v for k, v in raw.items() if k in DEFAULTS}}
@@ -650,6 +660,14 @@ def vectorize_map(
             for piece in pieces:
                 if piece.area < zone_min_area * (pixel_size_m ** 2):
                     continue
+                # Solidity filter: drop sparse, dendritic shapes (e.g.
+                # river networks sharing a water zone's blue) that are
+                # not compact areas. solidity = area / convex-hull area;
+                # compact blobs score high, thin dendrites score low.
+                if zone.min_solidity is not None:
+                    hull = piece.convex_hull
+                    if hull.area <= 0 or (piece.area / hull.area) < zone.min_solidity:
+                        continue
                 # Bbox filter: if the zone declares a geographic bounding
                 # box, discard any piece whose centroid falls outside it.
                 if zone.bbox_filter is not None:
