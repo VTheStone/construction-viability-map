@@ -1,11 +1,17 @@
 # Map 10 — Categorias de Incomodidades (LC 173/2024 Annex 14)
 #
-# The legend shows CI-A through CI-G (7 categories), but only 4
-# appear as filled polygons in the PDF: light blue (CI-F), magenta
-# purple (CI-G), and two grays (CI-A and CI-E). The remaining ones
-# (CI-B/C/D) are rendered only as line/outline features and are
-# out of scope for this color-segmentation pass — they may be
-# recovered later via a separate line vectorization.
+# Only two categories appear as filled polygons: light blue (CI-F)
+# and magenta/purple (CI-G). The grays (CI-A, CI-E) are
+# indistinguishable from the hillshade and out of scope; CI-B/C/D are
+# line-only features, also out of scope.
+#
+# CI-F challenge: hydrography (rivers) is drawn in the same blue as
+# CI-F and shares its hue AND value, so neither color nor value can
+# separate them. The two are distinguished only by SHAPE — rivers are
+# sparse dendritic networks (low solidity), CI-F is compact blobs
+# (high solidity). The min_solidity filter handles this. Verified via
+# pixel-level analysis of the source GeoTIFF: CI-F polygons score
+# ~0.50-1.0, river networks ~0.18-0.43.
 
 map_id: map_10
 source_tif: data/raw/sao_jose_sc/master_plan/overlays/mapa_10_incomodidades.tif
@@ -14,35 +20,34 @@ zones:
   - code: CI-F
     name: Categoria de Incomodidade F
     color_hex: "#4aade2"
+    match_by: low_value
+    value_min: 90
+    value_max: 205
+    hue_target: 100
+    hue_tolerance: 12
+    saturation_min_zone: 80
+    min_area_px2: 2000
+    min_solidity: 0.48
+    # Legit CI-F is the SW valley + Centro Empresarial. NE bay/ocean
+    # is excluded by the eastern + northern limits. (Data-driven from
+    # source GeoTIFF blob centroids.)
+    bbox_filter: [726000, 6940000, 734100, 6950500]
 
   - code: CI-G
     name: Categoria de Incomodidade G
     color_hex: "#af5193"
 
-  - code: CI-A
-    name: Categoria de Incomodidade A
-    color_hex: "#b3b3b3"
-    match_by: low_saturation
-    saturation_max: 8
-    value_min: 165
-    value_max: 195
-    min_area_px2: 300000
-
-  - code: CI-E
-    name: Categoria de Incomodidade E
-    color_hex: "#cccccc"
-    match_by: low_saturation
-    saturation_max: 8
-    value_min: 195
-    value_max: 215
-    min_area_px2: 300000
-
-saturation_min: 30
-value_min: 40
+saturation_min: 70
+value_min: 50
 value_max: 245
-max_hue_distance: 20
-close_kernel_px: 20
-open_kernel_px: 10
+max_hue_distance: 12
+# Small close kernel so river lines do NOT bridge into CI-F blobs
+# (which would merge a compact blob with a sparse network and defeat
+# the solidity filter).
+close_kernel_px: 4
+open_kernel_px: 4
 fill_holes: true
 min_polygon_area_px2: 3000
-simplify_tolerance_px: 8
+simplify_tolerance_px: 6
+overlay_propagation_max_iters: 0
+overlay_detect_rivers: false
