@@ -1,0 +1,84 @@
+# Map 09 — Estratégia de Transporte / Densidade Populacional Proposta
+# (LC 173/2024 Annex 13)
+#
+# This map is a SEQUENTIAL CHOROPLETH (population-density heatmap) of
+# semi-transparent purple hexagons over a hillshade. Red transit
+# corridors are ignored (different hue). Unlike the flat-color zone
+# maps, the 6 legend classes share one purple hue and differ only in
+# lightness — and because the hexagons are semi-transparent, the
+# hillshade smears each class across a range of values. Clean 6-class
+# recovery is therefore not achievable; we approximate with 4 coarse
+# density bands separated by value. All bands share the purple hue.
+
+map_id: map_09
+source_tif: data/raw/sao_jose_sc/master_plan/overlays/mapa_09_transporte_mobilidade.tif
+
+zones:
+  - code: DP-5
+    name: Densidade Alta (250-706 hab/ha)
+    color_hex: "#3a2c8c"
+    match_by: low_value
+    value_min: 40
+    value_max: 118
+    hue_target: 126
+    hue_tolerance: 13
+    saturation_min_zone: 38
+    min_area_px2: 300
+
+  - code: DP-4
+    name: Densidade Média-Alta (150-250 hab/ha)
+    color_hex: "#6a5ab0"
+    match_by: low_value
+    value_min: 118
+    value_max: 150
+    hue_target: 126
+    hue_tolerance: 13
+    saturation_min_zone: 22
+    min_area_px2: 300
+
+  - code: DP-3
+    name: Densidade Média (100-150 hab/ha)
+    color_hex: "#9a8fce"
+    match_by: low_value
+    value_min: 150
+    value_max: 180
+    hue_target: 126
+    hue_tolerance: 13
+    saturation_min_zone: 15
+    min_area_px2: 300
+
+  - code: DP-2
+    name: Densidade Baixa (50-100 hab/ha)
+    color_hex: "#c5bfe5"
+    match_by: low_value
+    value_min: 180
+    value_max: 208
+    hue_target: 126
+    hue_tolerance: 13
+    saturation_min_zone: 10
+    min_area_px2: 300
+
+  - code: DP-1
+    name: Densidade Muito Baixa (0-50 hab/ha)
+    color_hex: "#e8e4f2"
+    match_by: low_value
+    value_min: 208
+    value_max: 245
+    hue_target: 126
+    hue_tolerance: 13
+    saturation_min_zone: 8
+    min_area_px2: 300
+
+# Note: the lightest class (0-50 hab/ha) is near-white lavender,
+# indistinguishable from paper/hillshade, so it is intentionally
+# omitted (it is also the "default" low-density background).
+saturation_min: 8
+value_min: 40
+value_max: 245
+max_hue_distance: 13
+close_kernel_px: 10
+open_kernel_px: 3
+fill_holes: false
+min_polygon_area_px2: 300
+simplify_tolerance_px: 5
+overlay_propagation_max_iters: 0
