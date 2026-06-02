@@ -3,82 +3,104 @@
 #
 # This map is a SEQUENTIAL CHOROPLETH (population-density heatmap) of
 # semi-transparent purple hexagons over a hillshade. Red transit
-# corridors are ignored (different hue). Unlike the flat-color zone
-# maps, the 6 legend classes share one purple hue and differ only in
-# lightness — and because the hexagons are semi-transparent, the
-# hillshade smears each class across a range of values. Clean 6-class
-# recovery is therefore not achievable; we approximate with 4 coarse
-# density bands separated by value. All bands share the purple hue.
+# corridors are ignored (different hue). The 6 legend classes share one
+# purple hue and differ only in LIGHTNESS, but because the hexagons are
+# semi-transparent the hillshade smears each class across a value range,
+# so a pure value split is approximate.
+#
+# The cuts below were placed on the real data, not midpoints. A V/S
+# histogram of purple pixels (hue 112-140) shows that saturation falls
+# monotonically as the class lightens, which is what separates the
+# classes:
+#   - the DENSEST class is the dark, highly saturated core (V~95, S~80);
+#   - the LIGHTEST class (0-50) is the dominant low-saturation lavender
+#     mass that peaks at V~190 (S~12) AND its near-white tail (V>210).
+# The earlier config mislabeled that 0-50 lavender as 50-100 because it
+# reserved the V>208 band for "0-50" — but V>208 is just the near-white
+# background tail, so every class read one band too dense. The bands now
+# start the 0-50 class at V>=185 and fold the near-white tail into it.
 
 map_id: map_09
 source_tif: data/raw/sao_jose_sc/master_plan/overlays/mapa_09_transporte_mobilidade.tif
 
 zones:
-  - code: DP-5
-    name: Densidade Alta (250-706 hab/ha)
-    color_hex: "#3a2c8c"
+  # Darkest, most saturated core = highest density.
+  - code: DP-6
+    name: Densidade Alta (350-706 hab/ha)
+    color_hex: "#382851"
     match_by: low_value
-    value_min: 40
-    value_max: 118
-    hue_target: 126
+    value_min: 90
+    value_max: 108
+    hue_target: 125
     hue_tolerance: 13
-    saturation_min_zone: 38
-    min_area_px2: 300
+    saturation_min_zone: 28
+    min_area_px2: 150
+
+  - code: DP-5
+    name: Densidade Alta (250-350 hab/ha)
+    color_hex: "#514a8c"
+    match_by: low_value
+    value_min: 108
+    value_max: 128
+    hue_target: 125
+    hue_tolerance: 13
+    saturation_min_zone: 42
+    min_area_px2: 150
 
   - code: DP-4
     name: Densidade Média-Alta (150-250 hab/ha)
-    color_hex: "#6a5ab0"
+    color_hex: "#6f62ad"
     match_by: low_value
-    value_min: 118
+    value_min: 128
     value_max: 150
-    hue_target: 126
+    hue_target: 125
     hue_tolerance: 13
-    saturation_min_zone: 22
-    min_area_px2: 300
+    saturation_min_zone: 40
+    min_area_px2: 150
 
   - code: DP-3
     name: Densidade Média (100-150 hab/ha)
-    color_hex: "#9a8fce"
+    color_hex: "#9087c2"
     match_by: low_value
     value_min: 150
-    value_max: 180
-    hue_target: 126
+    value_max: 165
+    hue_target: 125
     hue_tolerance: 13
-    saturation_min_zone: 15
-    min_area_px2: 300
+    saturation_min_zone: 26
+    min_area_px2: 150
 
   - code: DP-2
     name: Densidade Baixa (50-100 hab/ha)
-    color_hex: "#c5bfe5"
+    color_hex: "#b3acd5"
     match_by: low_value
-    value_min: 180
-    value_max: 208
-    hue_target: 126
+    value_min: 165
+    value_max: 185
+    hue_target: 125
     hue_tolerance: 13
-    saturation_min_zone: 10
-    min_area_px2: 300
+    saturation_min_zone: 15
+    min_area_px2: 150
 
+  # Dominant light lavender (V peak ~190) + near-white tail (V>210).
   - code: DP-1
     name: Densidade Muito Baixa (0-50 hab/ha)
-    color_hex: "#e8e4f2"
+    color_hex: "#d6d2e8"
     match_by: low_value
-    value_min: 208
-    value_max: 245
-    hue_target: 126
+    value_min: 185
+    value_max: 250
+    hue_target: 125
     hue_tolerance: 13
-    saturation_min_zone: 8
-    min_area_px2: 300
+    saturation_min_zone: 7
+    min_area_px2: 150
 
-# Note: the lightest class (0-50 hab/ha) is near-white lavender,
-# indistinguishable from paper/hillshade, so it is intentionally
-# omitted (it is also the "default" low-density background).
-saturation_min: 8
+saturation_min: 6
 value_min: 40
-value_max: 245
+value_max: 250
 max_hue_distance: 13
+# Consolidate hexagon clusters into readable bands without bridging
+# across class boundaries.
 close_kernel_px: 10
-open_kernel_px: 3
+open_kernel_px: 2
 fill_holes: false
-min_polygon_area_px2: 300
-simplify_tolerance_px: 5
+min_polygon_area_px2: 100
+simplify_tolerance_px: 4
 overlay_propagation_max_iters: 0
