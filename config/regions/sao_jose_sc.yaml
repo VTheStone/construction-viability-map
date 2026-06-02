@@ -94,7 +94,7 @@ data_sources:
         vectorized: true
         vector_priority: 2                # drives risk filter
       - id: "map_09"
-        name: "Estratégia de Transporte e Mobilidade"
+        name: "Densidade Populacional"
         annex: 13
         overlay: true
         vectorized: true
