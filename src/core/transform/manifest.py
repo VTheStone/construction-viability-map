@@ -116,7 +116,7 @@ def build_manifest(
                 type="raster",
                 path=str(slope_png.resolve()),
                 bounds_wgs84=meta["bounds_wgs84"],
-                default_visible=True,
+                default_visible=False,
                 default_opacity=0.6,
                 extras={
                     "unit": meta.get("unit"),
@@ -132,7 +132,7 @@ def build_manifest(
         layers.append(
             LayerEntry(
                 id="app",
-                name="APP — Áreas de Preservação Permanente",
+                name="Hidrografia — Rios",
                 group="environmental",
                 type="vector",
                 path=str(app_parquet_path.resolve()),  # outside processed_dir
