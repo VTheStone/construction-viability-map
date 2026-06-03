@@ -26,33 +26,40 @@ from pathlib import Path
 import numpy as np
 import rasterio
 from matplotlib import cm
-from matplotlib.colors import Normalize
+from matplotlib.colors import LogNorm
 from PIL import Image
 from rasterio.warp import transform_bounds
 
 logger = logging.getLogger(__name__)
 
-# Color scale anchored to legal/physical thresholds for São José terrain.
-# 0-45 degrees covers everything the user cares about:
-#   - 0-15:  flat to gentle (no restriction)
-#   - 15-30: moderate (urban-feasible with care)
-#   - 30-45: steep (restricted construction)
-#   - >45:   automatic APP per Forest Code (saturated red)
-SLOPE_MIN_DEG = 0.0
+# Log scale can't start at 0, so flat terrain clips to this floor (it
+# gets the greenest color). Most of São José is gentle (<10°); a LOG
+# ramp spreads those low values across the palette instead of crushing
+# them all into one shade of green — that was the readability problem.
+# 45° is the Forest Code APP threshold (Law 12.651/2012); above it = red.
+SLOPE_FLOOR_DEG = 1.0
 SLOPE_MAX_DEG = 45.0
 
 # Matplotlib colormap. "_r" reverses it so low values are green
 # (the natural mental model for "good to build").
 COLORMAP_NAME = "RdYlGn_r"
 
-# Legend stops shown in the app's sidebar. Labels are in Portuguese
-# because the app's primary audience is Brazilian.
+# Legend stops shown in the app's sidebar, roughly log-spaced (1, 3, 8,
+# 17, 30, 45) to match the log color ramp. Labels in Portuguese because
+# the app's primary audience is Brazilian.
 LEGEND_STOPS = [
-    {"value": 0, "label": "Plano (0°)"},
-    {"value": 15, "label": "Suave (15°)"},
-    {"value": 30, "label": "Acidentado (30°)"},
+    {"value": 1, "label": "Plano (≤1°)"},
+    {"value": 3, "label": "Suave (3°)"},
+    {"value": 8, "label": "Moderado (8°)"},
+    {"value": 17, "label": "Acidentado (17°)"},
+    {"value": 30, "label": "Forte (30°)"},
     {"value": 45, "label": "Íngreme (45°+, limite APP)"},
 ]
+
+
+def _make_norm() -> LogNorm:
+    """Shared log normalizer so the PNG and the legend use the same scale."""
+    return LogNorm(vmin=SLOPE_FLOOR_DEG, vmax=SLOPE_MAX_DEG, clip=True)
 
 
 def _hex_from_rgba(rgba: tuple[float, float, float, float]) -> str:
@@ -63,7 +70,7 @@ def _hex_from_rgba(rgba: tuple[float, float, float, float]) -> str:
 
 def _build_legend(colormap) -> list[dict]:
     """Return the legend stops with hex colors filled in from the colormap."""
-    norm = Normalize(vmin=SLOPE_MIN_DEG, vmax=SLOPE_MAX_DEG, clip=True)
+    norm = _make_norm()
     legend = []
     for stop in LEGEND_STOPS:
         color = colormap(norm(stop["value"]))
@@ -123,12 +130,12 @@ def visualize_slope(
     mask |= values < 0
 
 
-    # Clip to the visualization range. Values above 45° saturate at red.
-    clipped = np.clip(values, SLOPE_MIN_DEG, SLOPE_MAX_DEG)
+    # Clip to [floor, max]: flat terrain -> floor (greenest), >45° -> red.
+    clipped = np.clip(values, SLOPE_FLOOR_DEG, SLOPE_MAX_DEG)
 
-    # Apply the colormap. matplotlib returns RGBA in [0, 1] floats.
+    # Apply the colormap on a LOG scale. matplotlib returns RGBA floats.
     colormap = cm.get_cmap(COLORMAP_NAME)
-    norm = Normalize(vmin=SLOPE_MIN_DEG, vmax=SLOPE_MAX_DEG, clip=True)
+    norm = _make_norm()
     rgba_float = colormap(norm(clipped))  # shape (H, W, 4)
 
     # Zero out alpha on NoData pixels.
@@ -169,7 +176,8 @@ def visualize_slope(
         },
         "crs_local": str(local_crs),
         "unit": "degrees",
-        "value_range": [SLOPE_MIN_DEG, SLOPE_MAX_DEG],
+        "value_range": [SLOPE_FLOOR_DEG, SLOPE_MAX_DEG],
+        "scale": "log",
         "colormap": COLORMAP_NAME,
         "legend": _build_legend(colormap),
     }

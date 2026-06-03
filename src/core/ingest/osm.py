@@ -97,6 +97,36 @@ def load_buildings(
     return _cached_or_fetch(cache_path, _fetch, force=force)
 
 
+def load_water(
+    boundary: GeoDataFrame,
+    cache_dir: Path,
+    *,
+    force: bool = False,
+) -> GeoDataFrame:
+    """Fetch water-surface polygons (sea/bay/strait/lagoon/river) in boundary.
+
+    Used to mask open water out of the slope raster: the IBGE municipal
+    boundary extends into Baía Sul, where the DEM carries void-fill noise
+    that an elevation cutoff can't separate from the genuinely flat
+    coastal city. OSM water polygons remove exactly the water instead.
+    """
+    cache_path = cache_dir / "water.parquet"
+    tags = {
+        "natural": ["water", "bay", "strait", "wetland"],
+        "water": True,
+        "wetland": True,
+    }
+
+    def _fetch() -> GeoDataFrame:
+        polygon = _as_4326_polygon(boundary)
+        gdf = ox.features_from_polygon(polygon, tags=tags)
+        gdf = gdf[gdf.geometry.geom_type.isin(["Polygon", "MultiPolygon"])]
+        gdf = gdf.reset_index(drop=False)
+        return _select_minimal_columns(gdf, extra=["natural", "water"])
+
+    return _cached_or_fetch(cache_path, _fetch, force=force)
+
+
 def load_roads(
     boundary: GeoDataFrame,
     cache_dir: Path,
