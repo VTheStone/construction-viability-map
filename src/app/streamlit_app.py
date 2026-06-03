@@ -121,10 +121,16 @@ def load_vector_layer(parquet_path: str) -> gpd.GeoDataFrame:
 
 
 def to_static_url(absolute_path: str) -> str:
-    """Convert an absolute filesystem path into the static server URL."""
-    rel = Path(absolute_path).resolve().relative_to(PROJECT_ROOT)
-    # Use forward slashes for URLs (Windows uses backslashes natively).
-    return f"{STATIC_SERVER_URL}/files/{rel.as_posix()}"
+    """Convert an absolute filesystem path into the static server URL.
+
+    Appends the file's mtime as a query param so the browser re-fetches
+    the image whenever the pipeline regenerates it (the URL is otherwise
+    constant, and browsers cache it aggressively).
+    """
+    abs_path = Path(absolute_path).resolve()
+    rel = abs_path.relative_to(PROJECT_ROOT)
+    version = int(abs_path.stat().st_mtime)
+    return f"{STATIC_SERVER_URL}/files/{rel.as_posix()}?v={version}"
 
 
 manifest = load_manifest()
@@ -172,6 +178,19 @@ for group_id in GROUP_ORDER:
                 label_visibility="collapsed",
             )
             choices[layer["id"]] = {"show": show, "opacity": opacity}
+
+            # Color legend (e.g. the slope ramp). Shown only when the
+            # layer is enabled and the manifest carries legend stops.
+            legend = layer.get("extras", {}).get("legend") or []
+            if show and legend:
+                rows = "".join(
+                    f'<div style="display:flex;align-items:center;gap:6px;margin:1px 0;">'
+                    f'<span style="width:14px;height:14px;border:1px solid #888;'
+                    f'background:{stop["color"]};display:inline-block;"></span>'
+                    f'<span style="font-size:0.78rem;">{stop["label"]}</span></div>'
+                    for stop in legend
+                )
+                st.markdown(rows, unsafe_allow_html=True)
 
 st.sidebar.markdown("---")
 st.sidebar.caption(

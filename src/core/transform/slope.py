@@ -182,6 +182,7 @@ def compute_slope(
     interim_dir: Path,
     *,
     target_crs: str | None = None,
+    sea_level_m: float = 0.0,
     force: bool = False,
 ) -> Path:
     """Compute slope from a DEM and save as a 2-band GeoTIFF.
@@ -230,14 +231,16 @@ def compute_slope(
         pixel_w = abs(src.transform.a)
         pixel_h = abs(src.transform.e)
 
-        # Identify NoData pixels in elevation so we don't propagate
-        # bogus gradients across the boundary.
+        # Mark both true NoData AND sea-level pixels as missing. The IBGE
+        # municipal boundary extends into Baía Sul, where the DEM reads
+        # ~0 m; without this, open water slope-computes to flat (green)
+        # "buildable" terrain. Raise sea_level_m by 1-2 m if a thin green
+        # fringe survives along the shoreline (bilinear resampling blends
+        # land and sea near the coast).
+        nodata_mask = elevation <= sea_level_m
         if nodata_in is not None:
-            nodata_mask = elevation == nodata_in
-            elevation_clean = np.where(nodata_mask, np.nan, elevation)
-        else:
-            nodata_mask = np.zeros_like(elevation, dtype=bool)
-            elevation_clean = elevation
+            nodata_mask |= elevation == nodata_in
+        elevation_clean = np.where(nodata_mask, np.nan, elevation)
 
         slope_deg, slope_pct = _compute_slope_arrays(
             elevation_clean, pixel_w, pixel_h
