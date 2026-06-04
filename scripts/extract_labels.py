@@ -69,11 +69,16 @@ def main() -> int:
             mag_ratio=args.mag_ratio,
             force=args.force,
         )
-        gdf = __import__("geopandas").read_parquet(result.out_path)
-        sample = sorted(gdf["zone_code"].value_counts().items()) if len(gdf) else []
-        print(f"\n{result.map_id}: {result.n_labels} labels -> {result.out_path}")
-        for code, cnt in sample:
-            print(f"  {code}: {cnt}")
+        # Maps with no matching labels write no file (any stale one is
+        # removed), so only read the output when there ARE labels.
+        if result.n_labels:
+            import geopandas as gpd
+            gdf = gpd.read_parquet(result.out_path)
+            print(f"\n{result.map_id}: {result.n_labels} labels -> {result.out_path}")
+            for code, cnt in sorted(gdf["zone_code"].value_counts().items()):
+                print(f"  {code}: {cnt}")
+        else:
+            print(f"\n{result.map_id}: 0 labels (no layer written)")
 
     return 0
 

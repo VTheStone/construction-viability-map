@@ -119,6 +119,21 @@ def _canonical(code: str) -> str:
             return f"{prefix}-{suffix}" if suffix else prefix
     return code
 
+def _map_prefixes(zones) -> set[str]:
+    """Code families this map actually defines, read from its zone codes.
+
+    Every Master Plan overlay is drawn over the same zoning base grid, so
+    OCR picks up ZA/ZB labels even on the risk or density maps. Keeping
+    only the families the map declares (AEIS for the risk map, etc.) drops
+    that bleed-through.
+    """
+    found: set[str] = set()
+    for z in zones:
+        code = z.code.upper()
+        for prefix in _CODE_PREFIXES:
+            if prefix in code:
+                found.add(prefix)
+    return found
 
 def _match_code(text: str, pattern: re.Pattern) -> str | None:
     """Return a canonical zone code if ``text`` looks like one, else None.
@@ -177,6 +192,10 @@ def extract_labels(
         raise FileNotFoundError(f"GeoTIFF not found: {source_tif}")
 
     pattern = re.compile(str(cfg.get("label_pattern", DEFAULT_LABEL_PATTERN)))
+    # Only accept codes whose family is actually defined by THIS map —
+    # drops the zoning base-grid labels (ZA/ZB) that bleed onto every
+    # overlay.
+    valid_prefixes = _map_prefixes(cfg["zones"])
 
     rgb, transform, crs, width, height = _read_rgb(source_tif)
     logger.info("OCR on %s (%dx%d, CRS=%s)", source_tif.name, width, height, crs)
@@ -203,6 +222,9 @@ def extract_labels(
             continue
         code = _match_code(text, pattern)
         if code is None:
+            continue
+        prefix = next((p for p in _CODE_PREFIXES if code.startswith(p)), None)
+        if valid_prefixes and prefix not in valid_prefixes:
             continue
         # bbox is 4 corner points [[x, y], ...]; use their centroid as
         # the label position, then map pixel -> CRS via the affine.
