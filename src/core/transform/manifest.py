@@ -166,6 +166,19 @@ def build_manifest(
                 overlay.id.split("_")[-1],
             )
             continue
+        # Companion OCR'd label layer (if produced) rides with this
+        # polygon layer via extras — no separate manifest entry / toggle.
+        extras = {
+            "annex": overlay.annex,
+            "style": {"color": "#333333", "weight": 1, "fillOpacity": 0.6},
+        }
+        labels_path = (
+            processed_dir / "master_plan" / "labels" / f"{overlay.id}_labels.geoparquet"
+        )
+        if labels_path.exists():
+            extras["labels_path"] = str(labels_path.resolve())
+            extras["label_field"] = "zone_code"
+
         layers.append(
             LayerEntry(
                 id=overlay.id,
@@ -176,14 +189,7 @@ def build_manifest(
                 bounds_wgs84=_vector_bounds_wgs84(parquet_path),
                 default_visible=False,
                 default_opacity=0.6,
-                extras={
-                    "annex": overlay.annex,
-                    "style": {
-                        "color": "#333333",
-                        "weight": 1,
-                        "fillOpacity": 0.6,
-                    },
-                },
+                extras=extras,
             )
         )
 

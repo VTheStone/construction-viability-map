@@ -53,6 +53,10 @@ class VectorLayerSpec:
     tooltip_fields: list[str] = field(default_factory=list)
     split_by: str | None = None  # column to split into sublayers
     split_label: str | None = None  # column whose value labels each sublayer
+    # Companion zone-code labels rendered as always-on text markers,
+    # tied to this layer's toggle (no separate checkbox).
+    label_gdf: gpd.GeoDataFrame | None = None
+    label_field: str | None = None
 
 
 def _bounds_to_folium(b: dict[str, float]) -> list[list[float]]:
@@ -99,6 +103,41 @@ def _add_geojson_layer(
         style_function=_make_style_function(style, color_property),
         tooltip=tooltip,
     ).add_to(fg)
+    fg.add_to(fmap)
+    return fg
+
+def _add_label_markers(
+    fmap: folium.Map,
+    gdf: gpd.GeoDataFrame,
+    name: str,
+    field: str,
+    show: bool,
+) -> folium.FeatureGroup:
+    """Add a FeatureGroup of always-visible text labels (one per point).
+
+    Used by OCR'd zone-code layers: a DivIcon shows the code itself so
+    co-colored subzones can be told apart. The CSS transform centers the
+    label box on its coordinate.
+    """
+    # control=False keeps it out of the LayerControl: it's not an
+    # independent layer, it rides with its parent's toggle.
+    fg = folium.FeatureGroup(name=name, show=show, control=False)
+    for _, row in gdf.iterrows():
+        geom = row.geometry
+        if geom is None or geom.is_empty:
+            continue
+        text = str(row[field])
+        folium.Marker(
+            location=[geom.y, geom.x],
+            icon=folium.DivIcon(
+                html=(
+                    '<div style="font-size:11px;font-weight:700;color:#1a1a1a;'
+                    'background:rgba(255,255,255,0.8);border:1px solid #555;'
+                    'border-radius:3px;padding:0 3px;white-space:nowrap;'
+                    'transform:translate(-50%,-50%);">' + text + "</div>"
+                ),
+            ),
+        ).add_to(fg)
     fg.add_to(fmap)
     return fg
 
@@ -188,6 +227,16 @@ def build_map(
             )
             sublayers.append(fg)
         groups[layer.name] = sublayers
+
+    # Companion zone-code labels: always-on text markers tied to their
+    # parent layer. Rendered only when the parent was passed in (i.e. its
+    # sidebar toggle is on) and kept OUT of the LayerControl so there's no
+    # separate checkbox.
+    for layer in vector_layers:
+        if layer.label_gdf is not None and not layer.label_gdf.empty and layer.label_field:
+            _add_label_markers(
+                fmap, layer.label_gdf, layer.name, layer.label_field, layer.show
+            )
 
     # The standard LayerControl handles non-grouped layers (rasters and
     # ungrouped vectors). GroupedLayerControl adds the grouped sublayers
