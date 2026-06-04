@@ -169,28 +169,49 @@ for group_id in GROUP_ORDER:
                 value=layer["default_visible"],
                 key=f"show_{layer['id']}",
             )
-            opacity = st.slider(
-                "Opacidade",
-                0.0, 1.0,
-                float(layer["default_opacity"]),
-                0.05,
-                key=f"opacity_{layer['id']}",
-                label_visibility="collapsed",
-            )
-            choices[layer["id"]] = {"show": show, "opacity": opacity}
-
-            # Color legend (e.g. the slope ramp). Shown only when the
-            # layer is enabled and the manifest carries legend stops.
-            legend = layer.get("extras", {}).get("legend") or []
-            if show and legend:
-                rows = "".join(
-                    f'<div style="display:flex;align-items:center;gap:6px;margin:1px 0;">'
-                    f'<span style="width:14px;height:14px;border:1px solid #888;'
-                    f'background:{stop["color"]};display:inline-block;"></span>'
-                    f'<span style="font-size:0.78rem;">{stop["label"]}</span></div>'
-                    for stop in legend
+            # Per-layer controls (opacity slider, sub-toggles, legend) are
+            # rendered ONLY when the layer is enabled — keeps the sidebar
+            # tidy: an unchecked layer shows just its name.
+            opacity = float(layer["default_opacity"])
+            show_labels = False
+            if show:
+                opacity = st.slider(
+                    "Opacidade",
+                    0.0, 1.0,
+                    float(layer["default_opacity"]),
+                    0.05,
+                    key=f"opacity_{layer['id']}",
+                    label_visibility="collapsed",
                 )
-                st.markdown(rows, unsafe_allow_html=True)
+                # "Show labels" sub-toggle, only for layers that have a
+                # companion OCR'd label set.
+                if layer.get("extras", {}).get("labels_path"):
+                    # Indent + toggle (switch) so it reads as a sub-option
+                    # of the layer above, not another top-level checkbox.
+                    _, sub = st.columns([0.08, 0.92])
+                    with sub:
+                        show_labels = st.toggle(
+                            "Mostrar rótulos",
+                            value=False,
+                            key=f"labels_{layer['id']}",
+                        )
+                # Color legend (e.g. the slope ramp), when present.
+                legend = layer.get("extras", {}).get("legend") or []
+                if legend:
+                    rows = "".join(
+                        f'<div style="display:flex;align-items:center;gap:6px;margin:1px 0;">'
+                        f'<span style="width:14px;height:14px;border:1px solid #888;'
+                        f'background:{stop["color"]};display:inline-block;"></span>'
+                        f'<span style="font-size:0.78rem;">{stop["label"]}</span></div>'
+                        for stop in legend
+                    )
+                    st.markdown(rows, unsafe_allow_html=True)
+
+            choices[layer["id"]] = {
+                "show": show,
+                "opacity": opacity,
+                "show_labels": show_labels,
+            }
 
 st.sidebar.markdown("---")
 st.sidebar.caption(
@@ -222,15 +243,19 @@ for layer in layers:
             )
         )
     else:  # vector
-        style = dict(layer.get("extras", {}).get("style", {}))
+        extras = layer.get("extras", {})
+        style = dict(extras.get("style", {}))
         style["fillOpacity"] = choice["opacity"]
 
-        # Master Plan layers carry per-feature colors in `color_hex`
-        # and a `zone_code` worth showing on hover. Other vector
-        # layers (e.g. APP) use a uniform style. They also split into
-        # one sublayer per zone so the LayerControl shows each zone
-        # as its own checkbox.
         is_master_plan = layer["group"] == "master_plan"
+
+        # Companion OCR'd zone-code labels: shown only when the layer's
+        # "Mostrar rótulos" sub-toggle is on.
+        label_gdf = None
+        labels_path = extras.get("labels_path")
+        if labels_path and choice.get("show_labels"):
+            label_gdf = load_vector_layer(labels_path)
+
         vector_specs.append(
             VectorLayerSpec(
                 name=layer["name"],
@@ -241,6 +266,8 @@ for layer in layers:
                 tooltip_fields=["zone_code", "zone_name"] if is_master_plan else [],
                 split_by="zone_code" if is_master_plan else None,
                 split_label="zone_name" if is_master_plan else None,
+                label_gdf=label_gdf,
+                label_field=extras.get("label_field", "zone_code"),
             )
         )
 
