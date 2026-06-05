@@ -87,7 +87,16 @@ def _clip_to_boundary(
     Assumes ``boundary`` is already in the same CRS as the raster.
     """
     with rasterio.open(src_path) as src:
-        if str(boundary.crs) != str(src.crs):
+        # Compare CRSs by identity, not by string: a boundary round-tripped
+        # through GeoParquet carries a verbose PROJJSON whose str() differs
+        # from the raster's compact "EPSG:31982" even though they are the
+        # same CRS. EPSG code (with a WKT fallback) is representation-stable.
+        b_crs, r_crs = boundary.crs, src.crs
+        same_crs = b_crs is not None and r_crs is not None and (
+            (b_crs.to_epsg() is not None and b_crs.to_epsg() == r_crs.to_epsg())
+            or b_crs.to_wkt() == r_crs.to_wkt()
+        )
+        if not same_crs:
             raise ValueError(
                 f"Boundary CRS {boundary.crs} does not match raster CRS "
                 f"{src.crs}. Reproject the boundary first."

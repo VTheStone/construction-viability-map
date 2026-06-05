@@ -1,4 +1,4 @@
-.PHONY: help install install-dev ingest process app test lint clean
+.PHONY: help install install-dev ingest process process-full labels app test lint clean
 
 REGION ?= sao_jose_sc
 
@@ -26,6 +26,12 @@ ingest:
 
 process:
 	python -m src.core.pipeline --region $(REGION) --stage all
+
+process-full:
+	python -m src.core.pipeline --region $(REGION) --stage all --with-labels
+
+labels:
+	python -m src.core.pipeline --region $(REGION) --stage labels
 
 app:
 	streamlit run src/app/streamlit_app.py
