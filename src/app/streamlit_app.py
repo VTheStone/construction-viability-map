@@ -16,6 +16,7 @@ import geopandas as gpd
 import streamlit as st
 from streamlit_folium import st_folium
 
+from src.app.inspect import inspect_point
 from src.app.map_view import RasterLayerSpec, VectorLayerSpec, build_map
 from src.app.static_server import DEFAULT_PORT as STATIC_PORT
 from src.app.static_server import create_app as create_static_app
@@ -33,6 +34,12 @@ st.set_page_config(
 REGION_SLUG = "sao_jose_sc"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 MANIFEST_PATH = PROJECT_ROOT / f"data/processed/{REGION_SLUG}/manifest.json"
+SLOPE_TIF = PROJECT_ROOT / f"data/interim/{REGION_SLUG}/slope.tif"
+APP_PARQUET = PROJECT_ROOT / f"data/interim/{REGION_SLUG}/app.geoparquet"
+DEM_TIF = next(
+    iter(sorted((PROJECT_ROOT / f"data/raw/{REGION_SLUG}/topodata").glob("**/*.tif"))),
+    None,
+)
 
 DEFAULT_CENTER_LAT = -27.595
 DEFAULT_CENTER_LON = -48.615
@@ -119,6 +126,25 @@ def load_vector_layer(parquet_path: str) -> gpd.GeoDataFrame:
     """Read a GeoParquet and reproject to EPSG:4326 (Folium's CRS)."""
     return gpd.read_parquet(parquet_path).to_crs("EPSG:4326")
 
+@st.cache_data
+def load_app_gdf() -> gpd.GeoDataFrame | None:
+    """APP buffer in WGS84 for point-in-polygon inspection (or None)."""
+    if APP_PARQUET.exists():
+        return gpd.read_parquet(APP_PARQUET).to_crs("EPSG:4326")
+    return None
+
+
+@st.cache_data
+def slope_threshold_png(threshold_pct: int) -> str:
+    """Render (cached per threshold) the steep-slope highlight PNG."""
+    from src.core.transform.slope_visualize import render_slope_threshold
+
+    png = render_slope_threshold(
+        SLOPE_TIF,
+        PROJECT_ROOT / f"data/processed/{REGION_SLUG}",
+        threshold_pct,
+    )
+    return str(png)
 
 def to_static_url(absolute_path: str) -> str:
     """Convert an absolute filesystem path into the static server URL.
@@ -153,6 +179,7 @@ st.sidebar.caption(
 )
 
 choices: dict[str, dict] = {}
+slope_threshold = 0
 
 for group_id in GROUP_ORDER:
     group_layers = [layer for layer in layers if layer["group"] == group_id]
@@ -213,6 +240,17 @@ for group_id in GROUP_ORDER:
                 "show_labels": show_labels,
             }
 
+        # Slope highlight filter belongs to the Terreno group, right under
+        # the Declividade layer it relates to.
+        if group_id == "terrain":
+            st.markdown("---")
+            slope_threshold = st.slider(
+                "Destacar declividade acima de (%)",
+                min_value=0, max_value=100, value=0, step=5,
+                key="slope_threshold",
+                help="0 = desligado. Realça em vermelho onde a declividade passa do limite.",
+            )
+
 st.sidebar.markdown("---")
 st.sidebar.caption(
     "Dados: IBGE (limite municipal), OSM (vias, edificações, hidrografia), "
@@ -272,6 +310,21 @@ for layer in layers:
         )
 
 
+# Slope highlight overlay (Phase 8 filter). Appended after the per-layer
+# specs so it draws on top of the slope ramp.
+if slope_threshold > 0 and SLOPE_TIF.exists():
+    slope_layer = next((lyr for lyr in layers if lyr["id"] == "slope"), None)
+    if slope_layer is not None:
+        raster_specs.append(
+            RasterLayerSpec(
+                name=f"Declividade > {slope_threshold}%",
+                image_url=to_static_url(slope_threshold_png(slope_threshold)),
+                bounds_wgs84=slope_layer["bounds_wgs84"],
+                opacity=0.7,
+                show=True,
+            )
+        )
+
 # ----- Render -------------------------------------------------------------
 
 st.title("Mapa de Viabilidade de Construção — São José/SC")
@@ -285,7 +338,56 @@ fmap = build_map(
     raster_layers=raster_specs,
     vector_layers=vector_specs,
 )
-st_folium(fmap, width=None, height=750, returned_objects=[])
+# returned_objects=["last_clicked"] makes st_folium report the last
+# clicked coordinate (and rerun), which drives the inspect panel below.
+map_state = st_folium(
+    fmap, width=None, height=750, returned_objects=["last_clicked"]
+)
+
+# ----- Click-to-inspect panel --------------------------------------------
+st.subheader("📍 Ponto inspecionado")
+clicked = (map_state or {}).get("last_clicked")
+if not clicked:
+    st.caption(
+        "Clique em qualquer ponto do mapa para ver declividade, elevação, "
+        "APP e a zona do Plano Diretor das camadas ativas naquele ponto."
+    )
+else:
+    # Only enabled Master Plan layers carry zone codes.
+    plan_layers = [
+        (spec.name, spec.gdf)
+        for spec in vector_specs
+        if "zone_code" in spec.gdf.columns
+    ]
+    info = inspect_point(
+        clicked["lat"],
+        clicked["lng"],
+        slope_tif=SLOPE_TIF,
+        dem_tif=DEM_TIF,
+        app_gdf=load_app_gdf(),
+        plan_layers=plan_layers,
+    )
+
+    c1, c2, c3 = st.columns(3)
+    if "slope_deg" in info:
+        pct = f" / {info['slope_pct']}%" if "slope_pct" in info else ""
+        c1.metric("Declividade", f"{info['slope_deg']}°{pct}")
+    else:
+        c1.metric("Declividade", "—")
+    c2.metric("Elevação", f"{info['elevation_m']} m" if "elevation_m" in info else "—")
+    if "in_app" in info:
+        c3.metric("Em APP?", "Sim" if info["in_app"] else "Não")
+    else:
+        c3.metric("Em APP?", "—")
+
+    if info["zones"]:
+        st.markdown("**Zonas do Plano Diretor neste ponto:**")
+        for z in info["zones"]:
+            st.markdown(f"- {z['layer']}: **{z['zone_code']}** — {z['zone_name']}")
+    else:
+        st.caption("Nenhuma camada do Plano Diretor ativa cobre este ponto.")
+
+    st.caption(f"Coordenada: {clicked['lat']:.5f}, {clicked['lng']:.5f}")
 
 
 # ----- Debug (collapsible) ------------------------------------------------

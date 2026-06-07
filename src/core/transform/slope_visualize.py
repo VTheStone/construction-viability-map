@@ -187,3 +187,35 @@ def visualize_slope(
 
     logger.info("Slope metadata written: %s", json_path)
     return png_path, json_path
+
+def render_slope_threshold(
+    slope_tif: Path,
+    processed_dir: Path,
+    threshold_pct: float,
+    *,
+    color: tuple[int, int, int] = (214, 40, 40),
+    alpha: int = 150,
+) -> Path:
+    """Render a highlight PNG marking pixels steeper than ``threshold_pct``.
+
+    Pixels whose slope (percent, band 2) exceeds the threshold are painted
+    a semi-transparent red; everything else and NoData stay transparent.
+    Drives the app's "highlight steep slopes" filter. Output bounds match
+    slope.png, so the app reuses the slope layer's bounds for placement.
+    """
+    png_path = processed_dir / f"slope_threshold_{int(threshold_pct)}.png"
+
+    with rasterio.open(slope_tif) as src:
+        pct = src.read(2).astype(np.float32)  # band 2 = slope percent
+        nodata = src.nodata
+
+    mask = pct > float(threshold_pct)
+    if nodata is not None:
+        mask &= pct != nodata
+
+    rgba = np.zeros((pct.shape[0], pct.shape[1], 4), dtype=np.uint8)
+    rgba[mask] = (color[0], color[1], color[2], alpha)
+
+    processed_dir.mkdir(parents=True, exist_ok=True)
+    Image.fromarray(rgba, mode="RGBA").save(png_path)
+    return png_path
