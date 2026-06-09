@@ -2,7 +2,7 @@
 
 > Master planning document. Describes the current architecture, scope, and roadmap. Reference point for resuming work in future sessions.
 
-**Last updated:** 2026-05-28
+**Last updated:** 2026-06-08
 
 ---
 
@@ -72,10 +72,10 @@ Most maps go through the same automated vectorization pipeline. Each in-scope ma
 | 8 | Map 04 | Special-Interest Environmental Areas | ✅ |
 | 9 | Map 05 | Special-Interest Urban Areas | ✅ |
 | 10 | Map 06 | AEI Urbanístico + Road system | ➖ out of scope |
-| 11 | Map 07 | Urban Equipment, Green Areas | 🟡 in progress |
+| 11 | Map 07 | Urban Equipment, Green Areas | ✅ |
 | 12 | Map 08 | Social-Interest Areas + Risk Areas | ✅ |
-| 13 | Map 09 | Transport Strategy | ⬜ |
-| 14 | Map 10 | Disturbance categories | ⬜ |
+| 13 | Map 09 | Population Density (Transport annex) | ✅ |
+| 14 | Map 10 | Disturbance categories | ✅ |
 
 > **Important note on zone granularity.** The PDF legends group subzones that share a color (e.g. "Zona de Estruturação e Qualificação Urbana (ZA-9 e ZA-10 e ZB-2)" is one legend entry, one color). The automated vectorizer respects this grouping: one polygon per color. The OCR-based label layer (point geometry) preserves the per-subzone code so filtering for "ZA-9" alone remains possible at the UI layer.
 
@@ -210,16 +210,15 @@ Grouped by category:
 
 Each layer has an opacity slider. Master Plan layers additionally expose per-zone checkboxes in the in-map LayerControl (right-side panel) so individual zones can be hidden.
 
-### Click-to-inspect (planned, not yet implemented)
+### Click-to-inspect (implemented)
 When the user clicks a point on the map, a panel shows:
 - Slope (degrees / %)
-- Elevation
-- Inside APP? Distance to nearest watercourse
+- Elevation (sampled from band 3 of the slope raster)
+- Inside APP? (point-in-polygon against the 30 m riparian buffer)
 - For each enabled Master Plan layer: the zone code and name at that point
 
-### Filters (planned)
-- Highlight pixels where `slope > X%`
-- Exclude APPs from view
+### Filters (implemented)
+- Slope-threshold highlight: paints pixels where `slope > X%` in red (lives in the Terreno group)
 
 ---
 
@@ -236,11 +235,13 @@ When the user clicks a point on the map, a panel shows:
 | 4d | ✅ done | `manifest.py` — write `processed/manifest.json` |
 | 5a | ✅ done | `master_plan_vectorize.py` — automated polygon extraction (HSV segmentation + overlay detection/label propagation, validated on Maps 02/03/04/05/08) |
 | 5b | ✅ done | App consumes vector Master Plan layers; OSM permanent; per-zone toggles via GroupedLayerControl |
-| **5c** | 🟡 **in progress** | **YAML configs for the in-scope Master Plan maps. Done: 02, 03, 04, 05, 08. Adjusting: 07. Pending: 09, 10. Out of scope: 01, 06.** |
-| 6 | future | `master_plan_labels.py` — OCR-extracted zone labels as point layer |
-| 7 | future | Pipeline orchestrator (`make process REGION=sao_jose_sc`) |
-| 8 | future | Click-to-inspect panel + slope-threshold filter |
-| 9 | future | Polish, deploy, README with screenshots |
+| 5c | ✅ done | YAML configs for all in-scope Master Plan maps (02, 03, 04, 05, 07, 08, 09, 10). Out of scope: 01, 06. |
+| 6 | ✅ done | `master_plan_labels.py` — OCR-extracted zone codes (EasyOCR) as an optional per-layer label layer |
+| 7 | ✅ done | Pipeline orchestrator — `python -m src.core.pipeline --stage all` (`make process`) |
+| 8 | ✅ done | Click-to-inspect panel + slope-threshold filter |
+| 9 | 🟡 in progress | Polish & deploy — **live at [construction-viability-map.streamlit.app](https://construction-viability-map.streamlit.app)**; README/disclaimer done; CI pending |
+
+> **Live deploy.** The app runs on Streamlit Community Cloud. To stay self-contained, a curated set of processed artifacts (manifest, slope raster, zone/label GeoParquets) is versioned in git; the heavy raw inputs and the OCR step stay out of the deploy. The localhost static-PNG server was replaced by base64-embedded overlays so the map needs no sidecar.
 
 ---
 
