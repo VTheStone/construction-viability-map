@@ -14,3 +14,7 @@ contextily>=1.5
 
 # PDF to image conversion (one-time prep for Master Plan maps)
 pymupdf>=1.24
+
+# OCR for Master Plan zone-label extraction (pipeline only; kept OUT of
+# requirements.txt so the app deploy doesn't pull torch ~1 GB).
+easyocr>=1.7,<2.0

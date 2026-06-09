@@ -21,8 +21,6 @@ pyyaml>=6.0
 streamlit>=1.30
 folium>=0.15
 streamlit-folium>=0.18
-fastapi>=0.110
-uvicorn>=0.27
 
 # HTTP / downloads
 requests>=2.31
@@ -34,6 +32,3 @@ pillow>=10.0
 # PDF parsing and image segmentation for Master Plan vectorization
 pymupdf>=1.24,<2.0
 opencv-python-headless>=4.10,<5.0
-
-# OCR for Master Plan zone labels (master_plan_labels.py)
-easyocr>=1.7,<2.0
