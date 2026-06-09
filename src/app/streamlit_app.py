@@ -29,10 +29,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 MANIFEST_PATH = PROJECT_ROOT / f"data/processed/{REGION_SLUG}/manifest.json"
 SLOPE_TIF = PROJECT_ROOT / f"data/interim/{REGION_SLUG}/slope.tif"
 APP_PARQUET = PROJECT_ROOT / f"data/interim/{REGION_SLUG}/app.geoparquet"
-DEM_TIF = next(
-    iter(sorted((PROJECT_ROOT / f"data/raw/{REGION_SLUG}/topodata").glob("**/*.tif"))),
-    None,
-)
 
 DEFAULT_CENTER_LAT = -27.595
 DEFAULT_CENTER_LON = -48.615
@@ -281,7 +277,6 @@ else:
         clicked["lat"],
         clicked["lng"],
         slope_tif=SLOPE_TIF,
-        dem_tif=DEM_TIF,
         app_gdf=load_app_gdf(),
         plan_layers=plan_layers,
     )

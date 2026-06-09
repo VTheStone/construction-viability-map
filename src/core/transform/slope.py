@@ -260,9 +260,14 @@ def compute_slope(
         slope_deg[nodata_mask] = NODATA_VALUE
         slope_pct[nodata_mask] = NODATA_VALUE
 
+        # Band 3 carries elevation (meters) so the app can report it on
+        # click without shipping the raw ~70 MB DEM to the deploy. NoData
+        # (sea / outside boundary) matches the slope bands.
+        elev_band = np.where(nodata_mask, NODATA_VALUE, elevation).astype(np.float32)
+
         profile = src.profile.copy()
         profile.update(
-            count=2,
+            count=3,
             dtype=rasterio.float32,
             compress="lzw",
             nodata=NODATA_VALUE,
@@ -272,15 +277,17 @@ def compute_slope(
         with rasterio.open(dst_path, "w", **profile) as dst:
             dst.write(slope_deg.astype(np.float32), 1)
             dst.write(slope_pct.astype(np.float32), 2)
+            dst.write(elev_band, 3)
             dst.set_band_description(1, "slope_degrees")
             dst.set_band_description(2, "slope_percent")
+            dst.set_band_description(3, "elevation_m")
 
     # Cleanup intermediates (optional — keeps interim_dir cleaner)
     reprojected.unlink(missing_ok=True)
     clipped.unlink(missing_ok=True)
 
     logger.info(
-        "Slope raster written: %s (%dx%d px, 2 bands)",
+        "Slope raster written: %s (%dx%d px, 3 bands: deg/pct/elev)",
         dst_path,
         slope_deg.shape[1],
         slope_deg.shape[0],
