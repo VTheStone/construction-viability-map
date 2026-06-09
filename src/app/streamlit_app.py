@@ -5,12 +5,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import atexit
 import json
-import socket
-import threading
-import time
-from urllib.request import urlopen
 
 import geopandas as gpd
 import streamlit as st
@@ -18,8 +13,6 @@ from streamlit_folium import st_folium
 
 from src.app.inspect import inspect_point
 from src.app.map_view import RasterLayerSpec, VectorLayerSpec, build_map
-from src.app.static_server import DEFAULT_PORT as STATIC_PORT
-from src.app.static_server import create_app as create_static_app
 
 # ----- Page setup ---------------------------------------------------------
 
@@ -44,69 +37,6 @@ DEM_TIF = next(
 DEFAULT_CENTER_LAT = -27.595
 DEFAULT_CENTER_LON = -48.615
 DEFAULT_ZOOM = 12
-
-STATIC_SERVER_URL = f"http://127.0.0.1:{STATIC_PORT}"
-
-
-# ----- Static server lifecycle -------------------------------------------
-
-def _port_in_use(port: int) -> bool:
-    """Return True if something is already listening on ``port``."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex(("127.0.0.1", port)) == 0
-
-
-def _wait_for_health(url: str, timeout_s: float = 10.0) -> bool:
-    """Poll the health endpoint until it answers or we time out."""
-    deadline = time.time() + timeout_s
-    while time.time() < deadline:
-        try:
-            with urlopen(f"{url}/health", timeout=0.5) as resp:
-                if resp.status == 200:
-                    return True
-        except Exception:
-            time.sleep(0.2)
-    return False
-
-
-def _run_uvicorn_in_thread(app, port: int) -> None:
-    """Start uvicorn on a background thread.
-
-    Threads (not subprocesses) avoid the Windows multiprocessing-spawn
-    pitfalls that bite Streamlit on Python 3.13.
-    """
-    import uvicorn
-
-    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
-    server = uvicorn.Server(config)
-    thread = threading.Thread(target=server.run, daemon=True)
-    thread.start()
-    # Tell uvicorn to shut down cleanly when Streamlit exits.
-    atexit.register(lambda: setattr(server, "should_exit", True))
-
-
-@st.cache_resource
-def ensure_static_server() -> None:
-    """Start the static file server once per Streamlit session.
-
-    Skips startup if the port is already taken (e.g. user re-ran
-    Streamlit without killing the previous instance).
-    """
-    if _port_in_use(STATIC_PORT):
-        return
-
-    app = create_static_app(PROJECT_ROOT)
-    _run_uvicorn_in_thread(app, STATIC_PORT)
-
-    if not _wait_for_health(STATIC_SERVER_URL, timeout_s=10):
-        st.warning(
-            "Static server did not respond within 10 seconds — "
-            "raster overlays may fail to load."
-        )
-
-
-ensure_static_server()
-
 
 # ----- Manifest loading --------------------------------------------------
 
@@ -145,18 +75,6 @@ def slope_threshold_png(threshold_pct: int) -> str:
         threshold_pct,
     )
     return str(png)
-
-def to_static_url(absolute_path: str) -> str:
-    """Convert an absolute filesystem path into the static server URL.
-
-    Appends the file's mtime as a query param so the browser re-fetches
-    the image whenever the pipeline regenerates it (the URL is otherwise
-    constant, and browsers cache it aggressively).
-    """
-    abs_path = Path(absolute_path).resolve()
-    rel = abs_path.relative_to(PROJECT_ROOT)
-    version = int(abs_path.stat().st_mtime)
-    return f"{STATIC_SERVER_URL}/files/{rel.as_posix()}?v={version}"
 
 
 manifest = load_manifest()
@@ -274,7 +192,7 @@ for layer in layers:
         raster_specs.append(
             RasterLayerSpec(
                 name=layer["name"],
-                image_url=to_static_url(layer["path"]),
+                image=str(PROJECT_ROOT / layer["path"]),
                 bounds_wgs84=layer["bounds_wgs84"],
                 opacity=choice["opacity"],
                 show=True,
@@ -292,12 +210,12 @@ for layer in layers:
         label_gdf = None
         labels_path = extras.get("labels_path")
         if labels_path and choice.get("show_labels"):
-            label_gdf = load_vector_layer(labels_path)
+            label_gdf = load_vector_layer(str(PROJECT_ROOT / labels_path))
 
         vector_specs.append(
             VectorLayerSpec(
                 name=layer["name"],
-                gdf=load_vector_layer(layer["path"]),
+                gdf=load_vector_layer(str(PROJECT_ROOT / layer["path"])),
                 style=style,
                 show=True,
                 color_property="color_hex" if is_master_plan else None,
@@ -318,7 +236,7 @@ if slope_threshold > 0 and SLOPE_TIF.exists():
         raster_specs.append(
             RasterLayerSpec(
                 name=f"Declividade > {slope_threshold}%",
-                image_url=to_static_url(slope_threshold_png(slope_threshold)),
+                image=slope_threshold_png(slope_threshold),
                 bounds_wgs84=slope_layer["bounds_wgs84"],
                 opacity=0.7,
                 show=True,

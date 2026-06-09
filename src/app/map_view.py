@@ -29,7 +29,7 @@ class RasterLayerSpec:
     """A raster layer to add to the map."""
 
     name: str
-    image_url: str
+    image: str 
     bounds_wgs84: dict[str, float]
     opacity: float
     show: bool
@@ -173,7 +173,7 @@ def build_map(
     for layer in raster_layers:
         ImageOverlay(
             name=layer.name,
-            image=layer.image_url,
+            image=layer.image,
             bounds=_bounds_to_folium(layer.bounds_wgs84),
             opacity=layer.opacity,
             interactive=False,

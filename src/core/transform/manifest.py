@@ -104,6 +104,13 @@ def build_manifest(
     """
     layers: list[LayerEntry] = []
 
+    # Store every path RELATIVE to the project root so the manifest works
+    # on any machine (e.g. the Linux deploy), not just where it was built.
+    project_root = processed_dir.resolve().parents[2]
+
+    def _rel(p: Path) -> str:
+        return p.resolve().relative_to(project_root).as_posix()
+
     # ----- Terrain: slope --------------------------------------------------
     if slope_json_path is not None and slope_json_path.exists():
         meta = json.loads(slope_json_path.read_text(encoding="utf-8"))
@@ -114,7 +121,7 @@ def build_manifest(
                 name="Declividade",
                 group="terrain",
                 type="raster",
-                path=str(slope_png.resolve()),
+                path=_rel(slope_png),
                 bounds_wgs84=meta["bounds_wgs84"],
                 default_visible=False,
                 default_opacity=0.6,
@@ -135,7 +142,7 @@ def build_manifest(
                 name="Hidrografia — Rios",
                 group="environmental",
                 type="vector",
-                path=str(app_parquet_path.resolve()),  # outside processed_dir
+                path=_rel(app_parquet_path),
                 bounds_wgs84=_vector_bounds_wgs84(app_parquet_path),
                 default_visible=False,
                 default_opacity=0.35,
@@ -176,7 +183,7 @@ def build_manifest(
             processed_dir / "master_plan" / "labels" / f"{overlay.id}_labels.geoparquet"
         )
         if labels_path.exists():
-            extras["labels_path"] = str(labels_path.resolve())
+            extras["labels_path"] = _rel(labels_path)
             extras["label_field"] = "zone_code"
 
         layers.append(
@@ -185,7 +192,7 @@ def build_manifest(
                 name=f"PD: {overlay.name}",
                 group="master_plan",
                 type="vector",
-                path=str(parquet_path.resolve()),
+                path=_rel(parquet_path),
                 bounds_wgs84=_vector_bounds_wgs84(parquet_path),
                 default_visible=False,
                 default_opacity=0.6,

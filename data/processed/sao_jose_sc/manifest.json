@@ -1,0 +1,274 @@
+{
+  "region_slug": "sao_jose_sc",
+  "schema_version": 1,
+  "layers": [
+    {
+      "id": "slope",
+      "name": "Declividade",
+      "group": "terrain",
+      "type": "raster",
+      "path": "data/processed/sao_jose_sc/slope.png",
+      "bounds_wgs84": {
+        "west": -48.748095187835695,
+        "south": -27.64831361137943,
+        "east": -48.59785804016425,
+        "north": -27.5182342108906
+      },
+      "default_visible": false,
+      "default_opacity": 0.6,
+      "extras": {
+        "unit": "degrees",
+        "value_range": [
+          1.0,
+          45.0
+        ],
+        "colormap": "RdYlGn_r",
+        "legend": [
+          {
+            "value": 1,
+            "label": "Plano (≤1°)",
+            "color": "#006837"
+          },
+          {
+            "value": 3,
+            "label": "Suave (3°)",
+            "color": "#9dd569"
+          },
+          {
+            "value": 8,
+            "label": "Moderado (8°)",
+            "color": "#fef1a7"
+          },
+          {
+            "value": 17,
+            "label": "Acidentado (17°)",
+            "color": "#f89053"
+          },
+          {
+            "value": 30,
+            "label": "Forte (30°)",
+            "color": "#d83328"
+          },
+          {
+            "value": 45,
+            "label": "Íngreme (45°+, limite APP)",
+            "color": "#a50026"
+          }
+        ]
+      }
+    },
+    {
+      "id": "app",
+      "name": "Hidrografia — Rios",
+      "group": "environmental",
+      "type": "vector",
+      "path": "data/interim/sao_jose_sc/app.geoparquet",
+      "bounds_wgs84": {
+        "west": -48.746019959,
+        "south": -27.636925857346075,
+        "east": -48.599152284562365,
+        "north": -27.520507714234768
+      },
+      "default_visible": false,
+      "default_opacity": 0.35,
+      "extras": {
+        "style": {
+          "color": "#1f78b4",
+          "weight": 1,
+          "fillColor": "#1f78b4",
+          "fillOpacity": 0.35
+        }
+      }
+    },
+    {
+      "id": "map_02",
+      "name": "PD: Macrozoneamento",
+      "group": "master_plan",
+      "type": "vector",
+      "path": "data/processed/sao_jose_sc/master_plan/vectors/map_02.geoparquet",
+      "bounds_wgs84": {
+        "west": -48.74653833284685,
+        "south": -27.642216177262075,
+        "east": -48.5826789966181,
+        "north": -27.51617232616988
+      },
+      "default_visible": false,
+      "default_opacity": 0.6,
+      "extras": {
+        "annex": 6,
+        "style": {
+          "color": "#333333",
+          "weight": 1,
+          "fillOpacity": 0.6
+        },
+        "labels_path": "data/processed/sao_jose_sc/master_plan/labels/map_02_labels.geoparquet",
+        "label_field": "zone_code"
+      }
+    },
+    {
+      "id": "map_03",
+      "name": "PD: Zoneamento",
+      "group": "master_plan",
+      "type": "vector",
+      "path": "data/processed/sao_jose_sc/master_plan/vectors/map_03.geoparquet",
+      "bounds_wgs84": {
+        "west": -48.74614049739272,
+        "south": -27.642163748621783,
+        "east": -48.58243790004893,
+        "north": -27.519349146202213
+      },
+      "default_visible": false,
+      "default_opacity": 0.6,
+      "extras": {
+        "annex": 7,
+        "style": {
+          "color": "#333333",
+          "weight": 1,
+          "fillOpacity": 0.6
+        },
+        "labels_path": "data/processed/sao_jose_sc/master_plan/labels/map_03_labels.geoparquet",
+        "label_field": "zone_code"
+      }
+    },
+    {
+      "id": "map_04",
+      "name": "PD: Área de Especial Interesse Ambiental",
+      "group": "master_plan",
+      "type": "vector",
+      "path": "data/processed/sao_jose_sc/master_plan/vectors/map_04.geoparquet",
+      "bounds_wgs84": {
+        "west": -48.74592491496945,
+        "south": -27.642153716177816,
+        "east": -48.59912580079889,
+        "north": -27.51977947119693
+      },
+      "default_visible": false,
+      "default_opacity": 0.6,
+      "extras": {
+        "annex": 8,
+        "style": {
+          "color": "#333333",
+          "weight": 1,
+          "fillOpacity": 0.6
+        }
+      }
+    },
+    {
+      "id": "map_05",
+      "name": "PD: Área de Especial Interesse Urbanístico",
+      "group": "master_plan",
+      "type": "vector",
+      "path": "data/processed/sao_jose_sc/master_plan/vectors/map_05.geoparquet",
+      "bounds_wgs84": {
+        "west": -48.70220920636288,
+        "south": -27.6419523066652,
+        "east": -48.59917451926453,
+        "north": -27.529928247307527
+      },
+      "default_visible": false,
+      "default_opacity": 0.6,
+      "extras": {
+        "annex": 9,
+        "style": {
+          "color": "#333333",
+          "weight": 1,
+          "fillOpacity": 0.6
+        },
+        "labels_path": "data/processed/sao_jose_sc/master_plan/labels/map_05_labels.geoparquet",
+        "label_field": "zone_code"
+      }
+    },
+    {
+      "id": "map_07",
+      "name": "PD: Equipamentos, Áreas Verdes e Espaços Livres",
+      "group": "master_plan",
+      "type": "vector",
+      "path": "data/processed/sao_jose_sc/master_plan/vectors/map_07.geoparquet",
+      "bounds_wgs84": {
+        "west": -48.71727733295411,
+        "south": -27.633122415775535,
+        "east": -48.60184560449334,
+        "north": -27.530891468505207
+      },
+      "default_visible": false,
+      "default_opacity": 0.6,
+      "extras": {
+        "annex": 11,
+        "style": {
+          "color": "#333333",
+          "weight": 1,
+          "fillOpacity": 0.6
+        }
+      }
+    },
+    {
+      "id": "map_08",
+      "name": "PD: Interesse Social e Áreas de Risco",
+      "group": "master_plan",
+      "type": "vector",
+      "path": "data/processed/sao_jose_sc/master_plan/vectors/map_08.geoparquet",
+      "bounds_wgs84": {
+        "west": -48.72563902173088,
+        "south": -27.620441133831076,
+        "east": -48.60461917088153,
+        "north": -27.538000486193862
+      },
+      "default_visible": false,
+      "default_opacity": 0.6,
+      "extras": {
+        "annex": 12,
+        "style": {
+          "color": "#333333",
+          "weight": 1,
+          "fillOpacity": 0.6
+        }
+      }
+    },
+    {
+      "id": "map_09",
+      "name": "PD: Densidade Populacional",
+      "group": "master_plan",
+      "type": "vector",
+      "path": "data/processed/sao_jose_sc/master_plan/vectors/map_09.geoparquet",
+      "bounds_wgs84": {
+        "west": -48.732861766919775,
+        "south": -27.641697565503588,
+        "east": -48.599451669847056,
+        "north": -27.53004914641122
+      },
+      "default_visible": false,
+      "default_opacity": 0.6,
+      "extras": {
+        "annex": 13,
+        "style": {
+          "color": "#333333",
+          "weight": 1,
+          "fillOpacity": 0.6
+        }
+      }
+    },
+    {
+      "id": "map_10",
+      "name": "PD: Categorias de Incomodidades",
+      "group": "master_plan",
+      "type": "vector",
+      "path": "data/processed/sao_jose_sc/master_plan/vectors/map_10.geoparquet",
+      "bounds_wgs84": {
+        "west": -48.70068965034075,
+        "south": -27.632526049376615,
+        "east": -48.63613968278293,
+        "north": -27.55208315541226
+      },
+      "default_visible": false,
+      "default_opacity": 0.6,
+      "extras": {
+        "annex": 14,
+        "style": {
+          "color": "#333333",
+          "weight": 1,
+          "fillOpacity": 0.6
+        }
+      }
+    }
+  ]
+}
