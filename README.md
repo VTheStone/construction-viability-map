@@ -4,7 +4,9 @@
 
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Status](https://img.shields.io/badge/status-WIP-orange.svg)
+[![Live demo](https://img.shields.io/badge/demo-live-brightgreen.svg)](https://construction-viability-map.streamlit.app)
+
+**🔗 Live demo: [construction-viability-map.streamlit.app](https://construction-viability-map.streamlit.app)**
 
 ![São José/SC Master Plan zones rendered as interactive vector overlays on the OSM basemap](docs/example_map.png)
 
@@ -24,7 +26,7 @@ The architecture is **modular per municipality**: new cities can be added withou
 
 - A geospatial pipeline: **ingest** (IBGE, OSM, Topodata) → **transform** (slope raster, APP buffers, automated Master Plan vectorization) → **publish** as interactive layers.
 - Master Plan PDF annexes turned into **vector polygon layers** (GeoParquet) via HSV color segmentation — no manual digitizing.
-- A **Streamlit + Folium** app with a permanent OSM basemap, per-layer opacity, and per-zone toggles.
+- A **Streamlit + Folium** app with a permanent OSM basemap, per-layer opacity and per-zone toggles, **click-to-inspect** (slope, elevation, APP and zoning at any clicked point), a **slope-threshold highlight** filter, and OCR-extracted zone-code labels as an optional layer.
 - A reusable **Adapter Pattern** so a second municipality plugs in without refactoring the core.
 
 ### Pilot city
@@ -41,6 +43,8 @@ Next planned city: Florianópolis/SC.
 - **GeoParquet** — final tabular dataset
 
 ## Quickstart
+
+> **Just want to try it?** Open the [live demo](https://construction-viability-map.streamlit.app) — no setup required. The steps below are for running locally or adding a new city. Generating the OCR label layer additionally needs `requirements-dev.txt` (it pulls EasyOCR).
 
 ```bash
 # 1. Clone the repository
@@ -91,8 +95,12 @@ See [`CONTRIBUTING.md`](./CONTRIBUTING.md) (coming soon).
 ## Known limitations
 
 - **Lots**: São José/SC has no public cadastral dataset. This project uses OpenStreetMap building footprints + synthetic blocks as a proxy. **It is not a substitute for official municipal records.**
-- **Zoning**: Master Plan maps are automatically vectorized via HSV color segmentation of the official PDF annexes (LC 173/2024). Subzones that share a single legend color are merged into one polygon; per-subzone disambiguation via OCR labels is on the roadmap.
+- **Zoning**: Master Plan maps are automatically vectorized via HSV color segmentation of the official PDF annexes (LC 173/2024). Subzones that share a single legend color are merged into one polygon; per-subzone zone codes are recovered separately via OCR (EasyOCR) and shown as an optional label layer.
 - **DEM**: uses Topodata from INPE (~30 m resolution), adequate for municipal-level analysis but coarse for intra-block analysis.
+
+## Disclaimer
+
+This is a **technical decision-support tool, not an official or legal document.** The layers indicate *where to look more carefully* — they do **not** constitute an environmental, urbanistic, or legal opinion. Always confirm against the official Master Plan text (LC 172/2024 and LC 173/2024), the responsible municipal bodies, and a licensed professional before any decision.
 
 ## License
 
