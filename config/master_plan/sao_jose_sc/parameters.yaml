@@ -1,0 +1,38 @@
+﻿# Urbanistic occupation parameters per zone — São José/SC.
+#
+# Source: LC 173/2024, ANEXO 20, "TABELA 01: PARÂMETROS URBANÍSTICOS —
+# Macrozonas e Zonas" (PDF pp. 95-96). Keyed by INDIVIDUAL zone code: the
+# vectorized polygons group co-colored subzones, so the per-point lookup
+# resolves the exact code via the OCR label layer (Phase 6).
+#
+# Fields (null = "não se aplica" / "-" in the source table):
+#   testada_min_m / area_min_m2     minimum lot frontage (m) / area (m²)
+#   ca_min / ca_basico / ca_maximo  floor-area ratio; ca_maximo via outorga onerosa
+#   pavimentos_max                  max floors (int, or "LIVRE" = limited by CA/setbacks)
+#   to_torre_pct / to_embasamento_pct   max occupancy: tower / podium (%)
+#   permeabilidade_min_pct          minimum permeable area (%)
+#   notas                           footnote codes; legend transcription is TODO (M1 next step)
+
+zones:
+  ZA-1:  {testada_min_m: 20, area_min_m2: 1000, ca_min: 0.1, ca_basico: 2, ca_maximo: 6.5, pavimentos_max: "LIVRE", to_torre_pct: 40, to_embasamento_pct: 70, permeabilidade_min_pct: 20, notas: [n, o, l, g]}
+  ZA-2:  {testada_min_m: 20, area_min_m2: 750,  ca_min: 0.1, ca_basico: 1, ca_maximo: 3.5, pavimentos_max: "LIVRE", to_torre_pct: 40, to_embasamento_pct: 65, permeabilidade_min_pct: 20, notas: [o, l, g]}
+  ZA-3:  {testada_min_m: 20, area_min_m2: 750,  ca_min: 0.1, ca_basico: 1, ca_maximo: 3.5, pavimentos_max: "LIVRE", to_torre_pct: 40, to_embasamento_pct: 65, permeabilidade_min_pct: 20, notas: [o, l, g]}
+  ZA-4:  {testada_min_m: 20, area_min_m2: 500,  ca_min: 0.1, ca_basico: 1, ca_maximo: 2,   pavimentos_max: 4, to_torre_pct: 50, to_embasamento_pct: 50, permeabilidade_min_pct: 15, notas: [l, g]}
+  ZA-5:  {testada_min_m: 20, area_min_m2: 500,  ca_min: 0.1, ca_basico: 1, ca_maximo: 2,   pavimentos_max: 4, to_torre_pct: 50, to_embasamento_pct: 50, permeabilidade_min_pct: 15, notas: [l, g]}
+  ZA-6:  {testada_min_m: 20, area_min_m2: 500,  ca_min: 0.1, ca_basico: 1, ca_maximo: 2,   pavimentos_max: 4, to_torre_pct: 50, to_embasamento_pct: 50, permeabilidade_min_pct: 15, notas: [l, g]}
+  ZA-7:  {testada_min_m: 20, area_min_m2: 500,  ca_min: 0.1, ca_basico: 1, ca_maximo: 2,   pavimentos_max: 4, to_torre_pct: 50, to_embasamento_pct: 50, permeabilidade_min_pct: 15, notas: [l, g]}
+  ZA-8:  {testada_min_m: 10, area_min_m2: 250,  ca_min: null, ca_basico: 1, ca_maximo: 1,  pavimentos_max: 2, to_torre_pct: null, to_embasamento_pct: 50, permeabilidade_min_pct: 25, notas: [l]}
+  ZA-9:  {testada_min_m: 10, area_min_m2: 250,  ca_min: 0.1, ca_basico: 1, ca_maximo: 1,   pavimentos_max: 2, to_torre_pct: null, to_embasamento_pct: 50, permeabilidade_min_pct: 25, notas: [l]}
+  ZA-10: {testada_min_m: 20, area_min_m2: 500,  ca_min: 0.1, ca_basico: 1, ca_maximo: 2,   pavimentos_max: 4, to_torre_pct: 50, to_embasamento_pct: 50, permeabilidade_min_pct: 15, notas: [l, g]}
+  ZA-11: {testada_min_m: 20, area_min_m2: 500,  ca_min: 0.1, ca_basico: 1, ca_maximo: 2,   pavimentos_max: 4, to_torre_pct: 50, to_embasamento_pct: 50, permeabilidade_min_pct: 15, notas: [l, g]}
+  ZA-12: {testada_min_m: 10, area_min_m2: 250,  ca_min: 0.1, ca_basico: 1, ca_maximo: 1,   pavimentos_max: 2, to_torre_pct: null, to_embasamento_pct: 50, permeabilidade_min_pct: 25, notas: [l]}
+
+  ZB-1:  {testada_min_m: 10, area_min_m2: 250,  ca_min: 0.1, ca_basico: 1, ca_maximo: 1,   pavimentos_max: 2, to_torre_pct: null, to_embasamento_pct: 50, permeabilidade_min_pct: 25, notas: [l, g]}
+  ZB-2:  {testada_min_m: 10, area_min_m2: 250,  ca_min: 0.1, ca_basico: 1, ca_maximo: 1,   pavimentos_max: 2, to_torre_pct: null, to_embasamento_pct: 55, permeabilidade_min_pct: 25, notas: [l, g]}
+  ZB-3:  {testada_min_m: null, area_min_m2: null, ca_min: 0.1, ca_basico: 1, ca_maximo: null, pavimentos_max: "projetos_especiais", to_torre_pct: null, to_embasamento_pct: null, permeabilidade_min_pct: 25, notas: [c, l]}
+
+  ZC-1:  {testada_min_m: 10, area_min_m2: 250,  ca_min: null, ca_basico: 1, ca_maximo: 1,  pavimentos_max: 2, to_torre_pct: null, to_embasamento_pct: 50, permeabilidade_min_pct: 25, notas: [l]}
+  ZC-2:  {testada_min_m: 10, area_min_m2: 250,  ca_min: null, ca_basico: 1, ca_maximo: 1,  pavimentos_max: 2, to_torre_pct: null, to_embasamento_pct: 50, permeabilidade_min_pct: 25, notas: [l]}
+
+  # Zona Rural — no occupation parameters in Tabela 01 (rural land).
+  ZR:    {rural: true}
