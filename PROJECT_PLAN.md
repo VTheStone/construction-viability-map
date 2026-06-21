@@ -240,6 +240,7 @@ When the user clicks a point on the map, a panel shows:
 | 7 | ✅ done | Pipeline orchestrator — `python -m src.core.pipeline --stage all` (`make process`) |
 | 8 | ✅ done | Click-to-inspect panel + slope-threshold filter |
 | 9 | 🟡 in progress | Polish & deploy — **live at [construction-viability-map.streamlit.app](https://construction-viability-map.streamlit.app)**; README/disclaimer done; CI pending |
+| 10 | 🔵 planned | **Construction Potential** — urbanistic parameters per zone (floors/gabarito, CA, TO, allowed uses) from LC 173/2024, surfaced in click-inspect for real-estate investors. See §12. |
 
 > **Live deploy.** The app runs on Streamlit Community Cloud. To stay self-contained, a curated set of processed artifacts (manifest, slope raster, zone/label GeoParquets) is versioned in git; the heavy raw inputs and the OCR step stay out of the deploy. The localhost static-PNG server was replaced by base64-embedded overlays so the map needs no sidecar.
 
@@ -299,3 +300,25 @@ When the user clicks a point on the map, a panel shows:
 - **Adapter Pattern** — Design pattern where each concrete implementation honors a common interface
 - **Manifest** — JSON file listing all processed layers available to the app
 - **HSV** — Hue/Saturation/Value color space. Used for color segmentation because it isolates hue from lighting variations (hillshade) better than RGB.
+
+---
+
+## 12. Phase 10 — Construction Potential (investor view)
+
+The maps answer *"which zone is here?"*. This phase answers *"what can be built here?"* — the urbanistic parameters per zone from LC 173/2024 — turning the viewer into a development-potential tool for real-estate investors (the target audience).
+
+### Data model
+A new `config/master_plan/sao_jose_sc/parameters.yaml`, keyed by **subzone code** (ZA-1 … ZA-12, ZB-1…3, ZC-1, ZR), with: max floors / height (gabarito), basic & maximum floor-area ratio (CA — the maximum reached via *outorga onerosa*), occupancy rate (TO), permeability rate, minimum lot area/frontage, setbacks, and allowed uses. The reserved `adapter.zoning_schema()` becomes its loader.
+
+Co-colored subzones (e.g. ZA-9/ZA-10/ZB-2) collapse to one polygon, so the per-point parameter lookup uses the **OCR label layer** (Phase 6) to resolve the exact subzone — this is where that work pays off.
+
+### Milestones
+- **M1 — Sourcing & data model:** extract the parameter quadro from the LC 173 PDF into `parameters.yaml`; loader + validation.
+- **M2 — Wire into the model:** implement `zoning_schema()`; join zone polygon + OCR label → parameters.
+- **M3 — Click-inspect "Construction potential":** show floors/CA/TO/uses at the clicked point.
+- **M4 — Investor synthesis:** estimated buildable area (lot × CA) + a readable verdict combining potential × constraints (slope/APP/risk).
+- **M5 — Criteria search:** filter/highlight zones meeting investor criteria (e.g. ≥ N floors + residential + outside APP/risk).
+- **M6 — Docs, disclaimer, tests.**
+
+### Investor-relevant data already in the app
+Constraints are already covered (slope, APP, risk Map 08, disturbance Map 10, density Map 09, amenities Map 07). Phase 10 adds the missing half — the **buildable potential** — and synthesizes the two.

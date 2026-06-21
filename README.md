@@ -17,7 +17,7 @@
 The goal is an interactive map that communicates construction viability across a city, not as a precomputed verdict per lot, but as a set of independent layers the user explores and toggles directly:
 
 - **Physical characteristics**: terrain slope, permanent preservation areas (APP), natural-disaster risk areas
-- **Legal characteristics**: zoning and special-interest areas from the municipal Master Plan
+- **Legal characteristics**: zoning and special-interest areas from the municipal Master Plan — and (in progress) the **buildable potential per zone**: number of floors, floor-area ratio (CA) and allowed uses
 - **Urban context**: roads, hydrography and buildings from OpenStreetMap
 
 The architecture is **modular per municipality**: new cities can be added without touching the core code.
