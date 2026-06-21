@@ -21,6 +21,7 @@ from geopandas import GeoDataFrame
 from src.core.config import load_region_config
 from src.core.ingest import ibge, osm
 from src.core.transform.master_plan_overlays import OverlayMetadata, load_overlays
+from src.core.transform.zoning_params import load_zone_parameters
 
 logger = logging.getLogger(__name__)
 
@@ -127,11 +128,11 @@ class SaoJoseSCAdapter:
         )
 
     def zoning_schema(self) -> dict[str, Any]:
-        """Map São José zoning codes to standardized attributes.
+        """Per-zone urbanistic parameters from LC 173/2024 (Tabela 01).
 
-        Empty for now (zoning not yet vectorized). When Map 03 + Table 01
-        of LC 173/2024 are vectorized, this returns one entry per zone
-        with its urbanistic parameters (max_height_m, max_coverage_pct,
-        max_far).
+        Returns ``{zone_code: {testada_min_m, area_min_m2, ca_basico,
+        ca_maximo, pavimentos_max, to_torre_pct, ...}}`` loaded from
+        ``config/master_plan/<slug>/parameters.yaml`` — the buildable
+        potential per zone. Empty dict if the file is absent.
         """
-        return {}
+        return load_zone_parameters(self.slug)
