@@ -37,6 +37,31 @@ zones:
   # Zona Rural — no occupation parameters in Tabela 01 (rural land).
   ZR:    {rural: true}
 
+    # Special-Interest Urban Areas (map_05) — LC 173/2024 Tabela 01 (pp. 97-98).
+  # A/B variants with identical parameters are collapsed into one code.
+  AEIU-1:  {especial: "Overlapping-zone or Special-Project parameters apply", ca_basico: 1, ca_maximo: 1, permeabilidade_min_pct: 25, notas: [c, l]}
+  AEIU-2:  {testada_min_m: 10, area_min_m2: 250, ca_min: 0.5, ca_basico: 1, ca_maximo: 1, pavimentos_max: 2, to_torre_pct: null, to_embasamento_pct: 40, permeabilidade_min_pct: 30, notas: [l]}
+  AEIU-3:  {testada_min_m: 10, area_min_m2: 250, ca_min: 0.5, ca_basico: 1, ca_maximo: 1, pavimentos_max: 2, to_torre_pct: null, to_embasamento_pct: 50, permeabilidade_min_pct: 25, notas: [l]}
+  AEIU-4:  {testada_min_m: 40, area_min_m2: 4000, ca_min: null, ca_basico: 0.1, ca_maximo: 0.1, pavimentos_max: 2, to_torre_pct: null, to_embasamento_pct: 10, permeabilidade_min_pct: 80, notas: [l]}
+  AEIU-5:  {testada_min_m: 20, area_min_m2: 500, ca_min: 0.5, ca_basico: 1, ca_maximo: 2, pavimentos_max: 4, to_torre_pct: 50, to_embasamento_pct: 50, permeabilidade_min_pct: 15, notas: [l, j, g]}
+  AEIU-6:  {testada_min_m: 10, area_min_m2: 250, ca_min: null, ca_basico: 1, ca_maximo: 1, pavimentos_max: 2, to_torre_pct: null, to_embasamento_pct: 50, permeabilidade_min_pct: 25, notas: [l]}
+  AEIU-7:  {testada_min_m: 20, area_min_m2: 750, ca_min: 0.5, ca_basico: 1, ca_maximo: 3.5, pavimentos_max: "LIVRE", to_torre_pct: 40, to_embasamento_pct: 80, permeabilidade_min_pct: 10, notas: [l, j, g], obs: "variant 7B: 4 floors, CA max 2, lot 500 m2"}
+  AEIU-8:  {testada_min_m: 20, area_min_m2: 750, ca_min: 0.5, ca_basico: 1, ca_maximo: 3.5, pavimentos_max: "LIVRE", to_torre_pct: 40, to_embasamento_pct: 80, permeabilidade_min_pct: 25, notas: [l, g]}
+  AEIU-9:  {testada_min_m: 20, area_min_m2: 750, ca_min: 0.5, ca_basico: 1, ca_maximo: 3.5, pavimentos_max: "LIVRE", to_torre_pct: 40, to_embasamento_pct: 80, permeabilidade_min_pct: 25, notas: [l, g]}
+  AEIU-10: {testada_min_m: 20, area_min_m2: 750, ca_min: 0.5, ca_basico: 1, ca_maximo: 3.5, pavimentos_max: "LIVRE", to_torre_pct: 40, to_embasamento_pct: 80, permeabilidade_min_pct: 10, notas: [l, j, g]}
+  AEIU-11: {testada_min_m: 20, area_min_m2: 500, ca_min: 0.5, ca_basico: 1, ca_maximo: 2, pavimentos_max: 4, to_torre_pct: 50, to_embasamento_pct: 50, permeabilidade_min_pct: 15, notas: [l, j, g]}
+  AEIU-12: {testada_min_m: 20, area_min_m2: 750, ca_min: 0.5, ca_basico: 1, ca_maximo: 3.5, pavimentos_max: "LIVRE", to_torre_pct: 40, to_embasamento_pct: 80, permeabilidade_min_pct: 10, notas: [l, j, g]}
+
+  # Special-Interest Public Areas (map_07).
+  AEIP-3:  {especial: "Overlapping-zone or Special-Project parameters apply", notas: [c]}
+  AEIP-4:  {testada_min_m: null, area_min_m2: null, ca_min: null, ca_basico: 0.1, ca_maximo: 0.1, pavimentos_max: 2, to_torre_pct: null, to_embasamento_pct: 10, permeabilidade_min_pct: 60, notas: [c, l]}
+  AEIP-5:  {especial: "Overlapping-zone parameters apply (note [e])", ca_basico: 1, ca_maximo: 1, notas: [e]}
+
+  # Special-Interest Environmental Areas (map_04).
+  AEIA-1:  {preservacao: true}  # APP — no occupation parameters
+  AEIA-2:  {testada_min_m: 40, area_min_m2: 4000, ca_min: null, ca_basico: 0.1, ca_maximo: 0.1, pavimentos_max: 2, to_torre_pct: null, to_embasamento_pct: 20, permeabilidade_min_pct: 60, notas: [l]}
+  AEIA-3:  {especial: "Coastal strip — overlapping-zone parameters apply"}
+
 # Footnote legend for the parameters above (LC 173/2024, Tabela 01, p. 101).
 notes_legend:
   a: "Parâmetros para novos parcelamentos e novas construções."

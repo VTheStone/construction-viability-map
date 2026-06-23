@@ -18,8 +18,8 @@ def test_buildable_zones_have_core_fields():
     params = load_zone_parameters("sao_jose_sc")
     required = {"ca_basico", "ca_maximo", "pavimentos_max", "area_min_m2"}
     for code, p in params.items():
-        if p.get("rural"):
-            continue  # rural land has no occupation parameters
+        if p.get("rural") or p.get("preservacao") or p.get("especial"):
+            continue  # rural / preservation / special-project zones have no fixed params
         missing = required - set(p)
         assert not missing, f"{code} missing {missing}"
 
