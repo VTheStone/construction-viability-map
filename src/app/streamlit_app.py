@@ -65,6 +65,14 @@ def load_app_gdf() -> gpd.GeoDataFrame | None:
 
 
 @st.cache_data
+def load_zone_params() -> dict:
+    """Per-zone urbanistic parameters (LC 173/2024) for the inspect panel."""
+    from src.core.transform.zoning_params import load_zone_parameters
+
+    return load_zone_parameters(REGION_SLUG)
+
+
+@st.cache_data
 def slope_threshold_png(threshold_pct: int) -> str:
     """Render (cached per threshold) the steep-slope highlight PNG."""
     from src.core.transform.slope_visualize import render_slope_threshold
@@ -277,13 +285,22 @@ else:
         for spec in vector_specs
         if "zone_code" in spec.gdf.columns
     ]
+    # Zoning (map_03) labels disambiguate co-colored subzones, so we can
+    # pick the exact parameters for the clicked point (works even with the
+    # "Mostrar rótulos" toggle off — loaded straight from the file).
+    zlayer = next((lyr for lyr in layers if lyr["id"] == "map_03"), None)
+    zlabels_path = (zlayer or {}).get("extras", {}).get("labels_path")
+    zlabels = (
+        load_vector_layer(str(PROJECT_ROOT / zlabels_path)) if zlabels_path else None
+    )
     info = inspect_point(
         clicked["lat"],
         clicked["lng"],
         slope_tif=SLOPE_TIF,
-        dem_tif=DEM_TIF,
         app_gdf=load_app_gdf(),
         plan_layers=plan_layers,
+        zone_params=load_zone_params(),
+        label_gdf=zlabels,
     )
 
     c1, c2, c3 = st.columns(3)
@@ -304,6 +321,21 @@ else:
             st.markdown(f"- {z['layer']}: **{z['zone_code']}** — {z['zone_name']}")
     else:
         st.caption("Nenhuma camada do Plano Diretor ativa cobre este ponto.")
+
+    pot = info.get("potential")
+    if pot:
+        st.markdown(f"**🏗️ Potencial construtivo — subzona {pot['zone_code']}:**")
+        p1, p2, p3 = st.columns(3)
+        pav = pot.get("pavimentos_max")
+        p1.metric("Pavimentos", "Livre" if pav == "LIVRE" else str(pav))
+        bas, mx = pot.get("ca_basico"), pot.get("ca_maximo")
+        p2.metric("CA (básico → máx)", f"{bas} → {mx}" if mx is not None else str(bas))
+        lote = pot.get("area_min_m2")
+        p3.metric("Lote mínimo", f"{lote} m²" if lote else "—")
+        st.caption(
+            "CA máximo via outorga onerosa · LC 173/2024 (Tabela 01) · "
+            "valores indicativos — confirme na lei/prefeitura."
+        )
 
     st.caption(f"Coordenada: {clicked['lat']:.5f}, {clicked['lng']:.5f}")
 
