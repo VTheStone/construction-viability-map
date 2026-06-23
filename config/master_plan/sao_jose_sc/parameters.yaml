@@ -36,3 +36,20 @@ zones:
 
   # Zona Rural — no occupation parameters in Tabela 01 (rural land).
   ZR:    {rural: true}
+
+# Footnote legend for the parameters above (LC 173/2024, Tabela 01, p. 101).
+notes_legend:
+  a: "Parâmetros para novos parcelamentos e novas construções."
+  b: "Lote de esquina: área mínima acrescida de 20%."
+  c: "Consultar os Licenciamentos Urbanísticos de Projetos Especiais."
+  d: "Nº de pavimentos inclui embasamento + torre (exceções: art. 39, II e III)."
+  e: "AEIP 5: aplicam-se os parâmetros da zona sobreposta (ou AEIP 4/3 se adquirida pelo Poder Público)."
+  f: "Com Fruição Pública: afastamentos laterais e de fundos da torre = 3 m."
+  g: "Estacionamento: ver o Código de Obras (Lei municipal 5.938/2020)."
+  h: "Válido para TC-16/TC-8 com alinhamento em AEI de Transporte Coletivo A/B."
+  i: "Conforme a localização, aplicar os parâmetros da ZA-1 ou da AEIU-12."
+  j: "Térreo com comércio/serviço/equipamento: mín. 50% da fachada alinhada ao afastamento frontal."
+  k: "TC-16/TC-8 com alinhamento em AEIP A/B: não é permitido fechar a área do lote."
+  l: "Recuo frontal mínimo: 4 m (residencial); 5,5 m (comercial/industrial/misto)."
+  n: "Permite aquisição de CA adicional (CA-ADIC) via outorga, limitado a +30% do CA máximo."
+  o: "Pavimentos 'LIVRE' = no máximo 25 pavimentos (exceções: art. 39, II e III)."
