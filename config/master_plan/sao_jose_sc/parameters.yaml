@@ -78,3 +78,16 @@ notes_legend:
   l: "Recuo frontal mínimo: 4 m (residencial); 5,5 m (comercial/industrial/misto)."
   n: "Permite aquisição de CA adicional (CA-ADIC) via outorga, limitado a +30% do CA máximo."
   o: "Pavimentos 'LIVRE' = no máximo 25 pavimentos (exceções: art. 39, II e III)."
+
+# Use level by Incomodidade category (LC 173/2024, Anexo 18 / Quadro 03).
+# The plan permits uses per Incomodidade category (A = lowest nuisance ->
+# G = highest); Quadro 04 maps which categories each zone allows, and the
+# map_10 layer shows them spatially. Simplified from the full activity list.
+incomodidade_legend:
+  CI-A: "Residencial e comércio/serviços de vizinhança (menor incômodo)"
+  CI-B: "Comércio varejista, serviços e equipamentos urbanos"
+  CI-C: "Comércio e serviços + indústria de baixo incômodo"
+  CI-D: "Comércio e serviços (incômodo intermediário)"
+  CI-E: "Comércio atacadista, indústria e serviços de médio incômodo"
+  CI-F: "Comércio atacadista e indústria de incômodo elevado"
+  CI-G: "Predominantemente industrial (incômodo máximo)"
