@@ -11,7 +11,7 @@ import geopandas as gpd
 import streamlit as st
 from streamlit_folium import st_folium
 
-from src.app.inspect import inspect_point
+from src.app.inspect import inspect_point, viability_verdict
 from src.app.map_view import RasterLayerSpec, VectorLayerSpec, build_map
 
 # ----- Page setup ---------------------------------------------------------
@@ -327,15 +327,41 @@ else:
         st.markdown(f"**🏗️ Potencial construtivo — subzona {pot['zone_code']}:**")
         p1, p2, p3 = st.columns(3)
         pav = pot.get("pavimentos_max")
-        p1.metric("Pavimentos", "Livre" if pav == "LIVRE" else str(pav))
+        p1.metric("Pavimentos", "Livre (até 25)" if pav == "LIVRE" else str(pav))
         bas, mx = pot.get("ca_basico"), pot.get("ca_maximo")
         p2.metric("CA (básico → máx)", f"{bas} → {mx}" if mx is not None else str(bas))
-        lote = pot.get("area_min_m2")
-        p3.metric("Lote mínimo", f"{lote} m²" if lote else "—")
+        lote_min = pot.get("area_min_m2")
+        p3.metric("Lote mínimo", f"{lote_min} m²" if lote_min else "—")
+
+        # Buildable-area estimate: lot area × CA. The user adjusts the lot
+        # to their terrain (defaults to the zone's minimum lot).
+        if isinstance(bas, (int, float)):
+            lote = st.number_input(
+                "Área do lote (m²) — ajuste para o seu terreno",
+                min_value=1.0, value=float(lote_min or 360), step=10.0,
+                key="lote_area",
+            )
+            b1, b2 = st.columns(2)
+            b1.metric(
+                "Área construível (CA básico)",
+                f"{lote * bas:,.0f}".replace(",", ".") + " m²",
+            )
+            if isinstance(mx, (int, float)):
+                b2.metric(
+                    "Área construível (CA máx, c/ outorga)",
+                    f"{lote * mx:,.0f}".replace(",", ".") + " m²",
+                )
         st.caption(
             "CA máximo via outorga onerosa · LC 173/2024 (Tabela 01) · "
             "valores indicativos — confirme na lei/prefeitura."
         )
+
+    # Indicative buildability verdict (potential × constraints).
+    verd = viability_verdict(info)
+    st.markdown(f"### {verd['icon']} Veredito: potencial **{verd['level']}**")
+    for reason in verd["reasons"]:
+        st.markdown(f"- {reason}")
+    st.caption("Leitura indicativa — não substitui parecer técnico, jurídico ou ambiental.")
 
     st.caption(f"Coordenada: {clicked['lat']:.5f}, {clicked['lng']:.5f}")
 

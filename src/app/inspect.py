@@ -122,8 +122,59 @@ def inspect_point(
                 sub = label_gdf[label_gdf["zone_code"].isin(candidates)]
                 if not sub.empty:
                     code = sub.loc[sub.geometry.distance(pt).idxmin(), "zone_code"]
-            if code and code in zone_params and not zone_params[code].get("rural"):
-                result["potential"] = {"zone_code": code, **zone_params[code]}
+            p = zone_params.get(code, {})
+            if code and p and not (p.get("rural") or p.get("preservacao")):
+                result["potential"] = {"zone_code": code, **p}
                 break
 
     return result
+
+def viability_verdict(info: dict[str, Any]) -> dict[str, Any]:
+    """Coarse, indicative buildability read: potential vs constraints.
+
+    Combines the clicked point's slope, APP membership and zone CA into a
+    single signal. Heuristic — a starting flag, not a technical or legal
+    assessment. Returns {level, icon, reasons}.
+    """
+    if info.get("in_app"):
+        return {
+            "level": "restrito",
+            "icon": "🔴",
+            "reasons": ["Dentro de APP — faixa de preservação; construção em regra vedada."],
+        }
+
+    reasons: list[str] = []
+    pot = info.get("potential") or {}
+    ca_max = pot.get("ca_maximo")
+    slope_pct = info.get("slope_pct")
+
+    constraint = "ok"
+    if isinstance(slope_pct, (int, float)):
+        if slope_pct > 30:
+            constraint = "alto"
+            reasons.append(f"Declividade alta ({slope_pct}%): obra cara e possivelmente restrita.")
+        elif slope_pct > 8:
+            constraint = "medio"
+            reasons.append(f"Declividade moderada ({slope_pct}%): atenção a fundação e terraplenagem.")
+
+    potential = "medio"
+    if isinstance(ca_max, (int, float)):
+        if ca_max >= 3:
+            potential = "alto"
+            reasons.append(f"Alto potencial construtivo (CA até {ca_max}).")
+        elif ca_max <= 1:
+            potential = "baixo"
+            reasons.append(f"Potencial construtivo limitado (CA {ca_max}).")
+
+    if constraint == "alto":
+        level, icon = "baixo", "🟠"
+    elif potential == "alto" and constraint == "ok":
+        level, icon = "alto", "🟢"
+    elif potential == "baixo":
+        level, icon = "baixo", "🟠"
+    else:
+        level, icon = "médio", "🟡"
+
+    if not reasons:
+        reasons.append("Sem restrições fortes detectadas; potencial intermediário.")
+    return {"level": level, "icon": icon, "reasons": reasons}
