@@ -255,6 +255,35 @@ if slope_threshold > 0 and SLOPE_TIF.exists():
 
 st.title("Mapa de Viabilidade de Construção — São José/SC")
 
+# ----- Zone potential search (Phase 10 M7) -------------------------------
+with st.expander("🔎 Buscar zonas por potencial construtivo", expanded=False):
+    _params = load_zone_params()
+    f1, f2 = st.columns(2)
+    min_pav = f1.slider("Pavimentos mínimos", 0, 25, 0, key="search_min_pav")
+    min_ca = f2.slider("CA máximo mínimo", 0.0, 7.0, 0.0, 0.5, key="search_min_ca")
+
+    matches = []
+    for code, p in _params.items():
+        if p.get("rural") or p.get("preservacao"):
+            continue
+        pav = p.get("pavimentos_max")
+        pav_n = 25 if pav == "LIVRE" else (pav if isinstance(pav, int) else 0)
+        ca_max = p.get("ca_maximo") if isinstance(p.get("ca_maximo"), (int, float)) else 0
+        if pav_n >= min_pav and ca_max >= min_ca:
+            matches.append({
+                "Zona": code,
+                "Pavimentos": "Livre (25)" if pav == "LIVRE" else pav,
+                "CA básico": p.get("ca_basico"),
+                "CA máx": p.get("ca_maximo"),
+                "Lote mín (m²)": p.get("area_min_m2"),
+            })
+    matches.sort(key=lambda r: (r["CA máx"] or 0), reverse=True)
+    st.dataframe(matches, use_container_width=True, hide_index=True)
+    st.caption(
+        f"{len(matches)} zona(s) atendem aos critérios · parâmetros LC 173/2024 "
+        "(Tabela 01) · valores indicativos."
+    )
+
 # Always render the map. With no layers enabled, the user still sees
 # the OSM basemap centered on the region — this is the default state.
 fmap = build_map(
