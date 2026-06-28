@@ -31,3 +31,22 @@ def load_zone_parameters(
         return {}
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     return data.get("zones", {})
+
+
+def load_zoning_subzones(region_slug: str, project_root: Path | None = None):
+    """Hand-digitized per-subzone polygons (map_03) for exact zone lookup.
+
+    Returns a GeoDataFrame[zone_code, geometry] in WGS84 with geometries
+    repaired (make_valid), or None if the file is absent. These
+    authoritative polygons replace the OCR-label heuristic for resolving
+    the exact subzone at a clicked point.
+    """
+    import geopandas as gpd
+
+    root = project_root or PROJECT_ROOT
+    path = root / "data" / "raw" / region_slug / "master_plan" / "map_03_subzones.gpkg"
+    if not path.exists():
+        return None
+    g = gpd.read_file(path)
+    g["geometry"] = g.geometry.make_valid()
+    return g.to_crs("EPSG:4326")[["zone_code", "geometry"]]
