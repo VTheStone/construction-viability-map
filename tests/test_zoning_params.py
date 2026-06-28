@@ -30,3 +30,25 @@ def test_ca_basico_not_above_maximo():
         bas, mx = p.get("ca_basico"), p.get("ca_maximo")
         if isinstance(bas, (int, float)) and isinstance(mx, (int, float)):
             assert bas <= mx, f"{code}: ca_basico {bas} > ca_maximo {mx}"
+
+
+
+def test_subzones_present_and_valid():
+    from src.core.transform.zoning_params import load_zoning_subzones
+
+    sub = load_zoning_subzones("sao_jose_sc")
+    assert sub is not None
+    assert len(sub) == 17
+    assert int((~sub.geometry.is_valid).sum()) == 0
+
+
+def test_every_subzone_has_parameters():
+    from src.core.transform.zoning_params import (
+        load_zone_parameters,
+        load_zoning_subzones,
+    )
+
+    params = load_zone_parameters("sao_jose_sc")
+    sub = load_zoning_subzones("sao_jose_sc")
+    for code in sub["zone_code"]:
+        assert code in params, code
