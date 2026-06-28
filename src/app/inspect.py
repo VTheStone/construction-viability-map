@@ -71,7 +71,7 @@ def inspect_point(
     app_gdf: gpd.GeoDataFrame | None = None,
     plan_layers: list[tuple[str, gpd.GeoDataFrame]] | None = None,
     zone_params: dict[str, dict[str, Any]] | None = None,
-    label_gdf: gpd.GeoDataFrame | None = None,
+    subzones: gpd.GeoDataFrame | None = None,
 ) -> dict[str, Any]:
     """Return slope / elevation / APP / zone facts at a WGS84 point."""
     result: dict[str, Any] = {"lat": lat, "lng": lng}
@@ -109,23 +109,17 @@ def inspect_point(
             )
     result["zones"] = zones
 
-    # Construction potential: a co-colored polygon groups several codes, so
-    # resolve the exact subzone via the nearest in-group OCR label, then
-    # look up its LC 173/2024 parameters.
-    if zone_params:
-        for z in zones:
-            candidates = _expand_group(str(z["zone_code"]))
-            code = None
-            if len(candidates) == 1 and candidates[0] in zone_params:
-                code = candidates[0]
-            elif label_gdf is not None and not label_gdf.empty:
-                sub = label_gdf[label_gdf["zone_code"].isin(candidates)]
-                if not sub.empty:
-                    code = sub.loc[sub.geometry.distance(pt).idxmin(), "zone_code"]
+    # Construction potential: resolve the EXACT subzone by point-in-polygon
+    # on the hand-digitized subzones (authoritative), then look up its
+    # LC 173/2024 parameters. iloc[0] handles the rare hand-drawn sliver
+    # overlap by taking the first match.
+    if zone_params is not None and subzones is not None and not subzones.empty:
+        hit = subzones[subzones.geometry.contains(pt)]
+        if not hit.empty:
+            code = str(hit.iloc[0]["zone_code"])
             p = zone_params.get(code, {})
-            if code and p and not (p.get("rural") or p.get("preservacao")):
+            if p and not (p.get("rural") or p.get("preservacao")):
                 result["potential"] = {"zone_code": code, **p}
-                break
 
     return result
 
