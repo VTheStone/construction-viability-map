@@ -81,6 +81,14 @@ def load_subzones():
 
 
 @st.cache_data
+def load_aei():
+    """AEI polygons (maps 04/05/07) in WGS84 — parameters prevail over zone."""
+    from src.core.transform.zoning_params import load_aei_zones
+
+    return load_aei_zones(REGION_SLUG)
+
+
+@st.cache_data
 def slope_threshold_png(threshold_pct: int) -> str:
     """Render (cached per threshold) the steep-slope highlight PNG."""
     from src.core.transform.slope_visualize import render_slope_threshold
@@ -327,9 +335,10 @@ else:
         clicked["lng"],
         slope_tif=SLOPE_TIF,
         app_gdf=load_app_gdf(),
-        plan_layers=plan_layers,
+        plan_layers=plan_layers,        
         zone_params=load_zone_params(),
         subzones=load_subzones(),
+        aei_zones=load_aei(),
     )
 
     c1, c2, c3 = st.columns(3)
@@ -353,7 +362,10 @@ else:
 
     pot = info.get("potential")
     if pot:
-        st.markdown(f"**🏗️ Potencial construtivo — subzona {pot['zone_code']}:**")
+        titulo = pot["zone_code"]
+        if pot.get("prevalece_sobre"):
+            titulo = f"{pot['zone_code']} (prevalece sobre {pot['prevalece_sobre']})"
+        st.markdown(f"**🏗️ Potencial construtivo — subzona {titulo}:**")
         p1, p2, p3 = st.columns(3)
         pav = pot.get("pavimentos_max")
         p1.metric("Pavimentos", "Livre (até 25)" if pav == "LIVRE" else str(pav))

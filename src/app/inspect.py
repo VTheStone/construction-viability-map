@@ -72,6 +72,7 @@ def inspect_point(
     plan_layers: list[tuple[str, gpd.GeoDataFrame]] | None = None,
     zone_params: dict[str, dict[str, Any]] | None = None,
     subzones: gpd.GeoDataFrame | None = None,
+    aei_zones: gpd.GeoDataFrame | None = None,
 ) -> dict[str, Any]:
     """Return slope / elevation / APP / zone facts at a WGS84 point."""
     result: dict[str, Any] = {"lat": lat, "lng": lng}
@@ -121,6 +122,20 @@ def inspect_point(
             if p and not (p.get("rural") or p.get("preservacao")):
                 result["potential"] = {"zone_code": code, **p}
 
+    # AEI precedence: a special-interest area overlapping the base zone
+    # prevails (LC 173/2024 sobreposição). A buildable AEI overrides the
+    # potential; a preservation AEI (e.g. AEIA-1) flags a restriction.
+    if zone_params is not None and aei_zones is not None and not aei_zones.empty:
+        ahit = aei_zones[aei_zones.geometry.contains(pt)]
+        if not ahit.empty:
+            acode = str(ahit.iloc[0]["zone_code"])
+            ap = zone_params.get(acode, {})
+            if ap.get("preservacao"):
+                result["preservacao_aei"] = acode
+            elif ap and not ap.get("rural"):
+                base_code = result.get("potential", {}).get("zone_code")
+                result["potential"] = {"zone_code": acode, "prevalece_sobre": base_code, **ap}
+
     return result
 
 def viability_verdict(info: dict[str, Any]) -> dict[str, Any]:
@@ -130,12 +145,14 @@ def viability_verdict(info: dict[str, Any]) -> dict[str, Any]:
     single signal. Heuristic — a starting flag, not a technical or legal
     assessment. Returns {level, icon, reasons}.
     """
-    if info.get("in_app"):
-        return {
-            "level": "restrito",
-            "icon": "🔴",
-            "reasons": ["Dentro de APP — faixa de preservação; construção em regra vedada."],
-        }
+    if info.get("in_app") or info.get("preservacao_aei"):
+        reason = "Dentro de APP — faixa de preservação; construção em regra vedada."
+        if info.get("preservacao_aei"):
+            reason = (
+                f"Em {info['preservacao_aei']} (Área de Especial Interesse Ambiental "
+                "de preservação) — construção em regra vedada."
+            )
+        return {"level": "restrito", "icon": "🔴", "reasons": [reason]}
 
     reasons: list[str] = []
     pot = info.get("potential") or {}
