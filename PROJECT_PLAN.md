@@ -310,15 +310,17 @@ The maps answer *"which zone is here?"*. This phase answers *"what can be built 
 ### Data model
 A new `config/master_plan/sao_jose_sc/parameters.yaml`, keyed by **subzone code** (ZA-1 … ZA-12, ZB-1…3, ZC-1, ZR), with: max floors / height (gabarito), basic & maximum floor-area ratio (CA — the maximum reached via *outorga onerosa*), occupancy rate (TO), permeability rate, minimum lot area/frontage, setbacks, and allowed uses. The reserved `adapter.zoning_schema()` becomes its loader.
 
-Co-colored subzones (e.g. ZA-9/ZA-10/ZB-2) collapse to one polygon, so the per-point parameter lookup uses the **OCR label layer** (Phase 6) to resolve the exact subzone — this is where that work pays off.
+Co-colored subzones (e.g. ZA-9/ZA-10/ZB-2) collapse to one polygon under color segmentation, and the OCR labels alone proved too sparse/noisy to resolve the exact subzone reliably. The per-point lookup instead uses a **hand-digitized subzone layer** (`map_03_subzones.gpkg`, 17 polygons traced over the georeferenced official map in QGIS) with point-in-polygon resolution. Special-interest areas (AEIU/AEIP/AEIA) **prevail over the base zone** where they overlap (LC 173/2024 *sobreposição*).
 
-### Milestones
-- **M1 — Sourcing & data model:** extract the parameter quadro from the LC 173 PDF into `parameters.yaml`; loader + validation.
-- **M2 — Wire into the model:** implement `zoning_schema()`; join zone polygon + OCR label → parameters.
-- **M3 — Click-inspect "Construction potential":** show floors/CA/TO/uses at the clicked point.
-- **M4 — Investor synthesis:** estimated buildable area (lot × CA) + a readable verdict combining potential × constraints (slope/APP/risk).
-- **M5 — Criteria search:** filter/highlight zones meeting investor criteria (e.g. ≥ N floors + residential + outside APP/risk).
-- **M6 — Docs, disclaimer, tests.**
+### Milestones (delivered ✅)
+- **M1 — Sourcing & data model ✅:** parameter quadro from the LC 173 PDF extracted into `parameters.yaml` (36 zones + notes/incomodidade legends); loader + validation.
+- **M2 — Wire into the model ✅:** `zoning_schema()` implemented; point-in-polygon join (subzone polygon → parameters).
+- **M3 — Click-inspect "Construction potential" ✅:** floors/CA/TO/uses at the clicked point.
+- **M4 — Investor synthesis ✅:** estimated buildable area (lot × CA) + a readable viability verdict (potential × slope/APP/risk).
+- **M5 — Criteria search ✅:** filter zones by buildable criteria (min floors / min CA).
+- **M6 — Subzone precision ✅:** sparse/noisy OCR resolution replaced by a hand-digitized 17-subzone boundary layer + point-in-polygon.
+- **M7 — AEI precedence ✅:** special-interest areas (AEIU/AEIP/AEIA) override the base zone where they overlap (*sobreposição*).
+- **M8 — Docs, disclaimer, tests ✅.**
 
 ### Investor-relevant data already in the app
 Constraints are already covered (slope, APP, risk Map 08, disturbance Map 10, density Map 09, amenities Map 07). Phase 10 adds the missing half — the **buildable potential** — and synthesizes the two.
