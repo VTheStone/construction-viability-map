@@ -17,7 +17,7 @@
 The goal is an interactive map that communicates construction viability across a city, not as a precomputed verdict per lot, but as a set of independent layers the user explores and toggles directly:
 
 - **Physical characteristics**: terrain slope, permanent preservation areas (APP), natural-disaster risk areas
-- **Legal characteristics**: zoning and special-interest areas from the municipal Master Plan — and (in progress) the **buildable potential per zone**: number of floors, floor-area ratio (CA) and allowed uses
+- **Legal characteristics**: zoning and special-interest areas from the municipal Master Plan, plus the **buildable potential per zone** (LC 173/2024): number of floors, floor-area ratio (CA), occupancy/permeability rates and allowed uses — with an estimated buildable area and viability verdict at any clicked point
 - **Urban context**: roads, hydrography and buildings from OpenStreetMap
 
 The architecture is **modular per municipality**: new cities can be added without touching the core code.
@@ -26,7 +26,7 @@ The architecture is **modular per municipality**: new cities can be added withou
 
 - A geospatial pipeline: **ingest** (IBGE, OSM, Topodata) → **transform** (slope raster, APP buffers, automated Master Plan vectorization) → **publish** as interactive layers.
 - Master Plan PDF annexes turned into **vector polygon layers** (GeoParquet) via HSV color segmentation — no manual digitizing.
-- A **Streamlit + Folium** app with a permanent OSM basemap, per-layer opacity and per-zone toggles, **click-to-inspect** (slope, elevation, APP and zoning at any clicked point), a **slope-threshold highlight** filter, and OCR-extracted zone-code labels as an optional layer.
+- A **Streamlit + Folium** app with a permanent OSM basemap, per-layer opacity and per-zone toggles, **click-to-inspect** (slope, elevation, APP, zoning and **construction potential** at any clicked point), a **slope-threshold highlight** filter, **search zones by buildable criteria** (floors/CA), and OCR-extracted zone-code labels as an optional layer.- A **Streamlit + Folium** app with a permanent OSM basemap, per-layer opacity and per-zone toggles, **click-to-inspect** (slope, elevation, APP and zoning at any clicked point), a **slope-threshold highlight** filter, and OCR-extracted zone-code labels as an optional layer.
 - A reusable **Adapter Pattern** so a second municipality plugs in without refactoring the core.
 
 ### Pilot city
@@ -95,7 +95,7 @@ See [`CONTRIBUTING.md`](./CONTRIBUTING.md) (coming soon).
 ## Known limitations
 
 - **Lots**: São José/SC has no public cadastral dataset. This project uses OpenStreetMap building footprints + synthetic blocks as a proxy. **It is not a substitute for official municipal records.**
-- **Zoning**: Master Plan maps are automatically vectorized via HSV color segmentation of the official PDF annexes (LC 173/2024). Subzones that share a single legend color are merged into one polygon; per-subzone zone codes are recovered separately via OCR (EasyOCR) and shown as an optional label layer.
+- **Zoning**: Master Plan maps are automatically vectorized via HSV color segmentation of the official PDF annexes (LC 173/2024). Subzones that share a single legend color merge into one polygon, so the exact subzone behind the **construction-potential** lookup comes from a hand-digitized boundary layer (17 subzones traced over the georeferenced official map in QGIS) resolved by point-in-polygon; OCR (EasyOCR) zone-code labels remain as an optional display layer.- **Zoning**: Master Plan maps are automatically vectorized via HSV color segmentation of the official PDF annexes (LC 173/2024). Subzones that share a single legend color are merged into one polygon; per-subzone zone codes are recovered separately via OCR (EasyOCR) and shown as an optional label layer.
 - **DEM**: uses Topodata from INPE (~30 m resolution), adequate for municipal-level analysis but coarse for intra-block analysis.
 
 ## Disclaimer

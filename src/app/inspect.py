@@ -8,7 +8,6 @@ the UI renders. Kept free of Streamlit imports so it stays testable.
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Any
 
@@ -39,28 +38,6 @@ def _sample(tif_path: Path | None, x: float, y: float) -> list[float | None] | N
     return [
         None if (nodata is not None and v == nodata) else float(v) for v in values
     ]
-
-
-def _expand_group(code: str) -> list[str]:
-    """Expand a grouped polygon code into individual subzone codes.
-
-    Co-colored subzones share one polygon, so map_03's ``zone_code`` is a
-    group like ``"ZA-9/ZA-10/ZB-2"`` (slash list) or ``"ZA-1..ZA-7"``
-    (range). Returns the individual codes to match the per-subzone
-    parameter table and the OCR labels.
-    """
-    out: list[str] = []
-    for chunk in code.split("/"):
-        chunk = chunk.strip()
-        if ".." in chunk:
-            a, b = chunk.split("..")
-            ma, mb = re.match(r"([A-Z]+)-?(\d+)", a), re.match(r"([A-Z]+)-?(\d+)", b)
-            if ma and mb:
-                prefix = ma.group(1)
-                out += [f"{prefix}-{n}" for n in range(int(ma.group(2)), int(mb.group(2)) + 1)]
-                continue
-        out.append(chunk)
-    return out
 
 
 def inspect_point(
