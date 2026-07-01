@@ -52,3 +52,11 @@ def test_every_subzone_has_parameters():
     sub = load_zoning_subzones("sao_jose_sc")
     for code in sub["zone_code"]:
         assert code in params, code
+        
+        
+def test_aei_zones_load():
+    from src.core.transform.zoning_params import load_aei_zones
+
+    aei = load_aei_zones("sao_jose_sc")
+    assert aei is not None and len(aei) > 0
+    assert aei["zone_code"].astype(str).str.startswith("AEI").all()

@@ -50,3 +50,25 @@ def load_zoning_subzones(region_slug: str, project_root: Path | None = None):
     g = gpd.read_file(path)
     g["geometry"] = g.geometry.make_valid()
     return g.to_crs("EPSG:4326")[["zone_code", "geometry"]]
+
+def load_aei_zones(region_slug: str, project_root: Path | None = None):
+    """AEI polygons (urbanístico/ambiental/público — maps 04/05/07) in WGS84.
+
+    Their parameters prevail over the base zone where they overlap
+    (LC 173/2024 sobreposição). Returns GeoDataFrame[zone_code, geometry]
+    or None if none exist.
+    """
+    import geopandas as gpd
+    import pandas as pd
+
+    root = project_root or PROJECT_ROOT
+    base = root / "data" / "processed" / region_slug / "master_plan" / "vectors"
+    parts = []
+    for map_id in ("map_04", "map_05", "map_07"):
+        p = base / f"{map_id}.geoparquet"
+        if p.exists():
+            g = gpd.read_parquet(p)[["zone_code", "geometry"]].to_crs("EPSG:4326")
+            parts.append(g)
+    if not parts:
+        return None
+    return gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), crs="EPSG:4326")
