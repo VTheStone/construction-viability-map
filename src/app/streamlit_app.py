@@ -54,9 +54,9 @@ DEM_TIF = next(
     None,
 )
 
-DEFAULT_CENTER_LAT = -27.595
-DEFAULT_CENTER_LON = -48.615
-DEFAULT_ZOOM = 12
+DEFAULT_CENTER_LAT = -27.605
+DEFAULT_CENTER_LON = -48.63
+DEFAULT_ZOOM = 13
 
 # ----- Manifest loading --------------------------------------------------
 
@@ -320,30 +320,54 @@ with st.expander("🔎 Buscar zonas por potencial construtivo", expanded=False):
         "(Tabela 01) · valores indicativos."
     )
 
-# Always render the map. With no layers enabled, the user still sees
-# the OSM basemap centered on the region — this is the default state.
-fmap = build_map(
-    center_lat=DEFAULT_CENTER_LAT,
-    center_lon=DEFAULT_CENTER_LON,
-    zoom=DEFAULT_ZOOM,
-    raster_layers=raster_specs,
-    vector_layers=vector_specs,
-)
-# returned_objects=["last_clicked"] makes st_folium report the last
-# clicked coordinate (and rerun), which drives the inspect panel below.
-map_state = st_folium(
-    fmap, width=None, height=750, returned_objects=["last_clicked"]
-)
+# Map width presets. The choice sets the map:info column ratio + height.
+# In "Amplo" the map goes full width and the inspect panel drops below it,
+# maximized horizontally. The control itself is rendered *below* the map.
+_MAP_LAYOUT = {
+    "Compacto": {"ratio": [1.0, 1.0], "height": 520},
+    "Médio": {"ratio": [1.8, 1.0], "height": 620},
+    "Amplo": {"height": 720},
+}
+if "map_size" not in st.session_state:
+    st.session_state["map_size"] = "Médio"
+size_choice = st.session_state["map_size"]
+_layout = _MAP_LAYOUT[size_choice]
 
-# ----- Click-to-inspect panel --------------------------------------------
-st.subheader("📍 Ponto inspecionado")
-clicked = (map_state or {}).get("last_clicked")
-if not clicked:
-    st.caption(
-        "Clique em qualquer ponto do mapa para ver declividade, elevação, "
-        "APP e a zona do Plano Diretor das camadas ativas naquele ponto."
+
+def _render_map(height: int):
+    # Always render the map; with no layers enabled the user still sees the
+    # OSM basemap centered on São José — the default state.
+    fmap = build_map(
+        center_lat=DEFAULT_CENTER_LAT,
+        center_lon=DEFAULT_CENTER_LON,
+        zoom=DEFAULT_ZOOM,
+        raster_layers=raster_specs,
+        vector_layers=vector_specs,
     )
-else:
+    return st_folium(
+        fmap, width=None, height=height, returned_objects=["last_clicked"]
+    )
+
+
+def _size_control():
+    # Below the map; key drives st.session_state["map_size"].
+    st.radio(
+        "Tamanho do mapa",
+        list(_MAP_LAYOUT.keys()),
+        horizontal=True,
+        key="map_size",
+    )
+
+
+def render_inspect_panel(map_state):
+    st.subheader("📍 Ponto inspecionado")
+    clicked = (map_state or {}).get("last_clicked")
+    if not clicked:
+        st.caption(
+            "Clique em qualquer ponto do mapa para ver declividade, elevação, "
+            "APP e a zona do Plano Diretor das camadas ativas naquele ponto."
+        )
+        return
     # Only enabled Master Plan layers carry zone codes.
     plan_layers = [
         (spec.name, spec.gdf)
@@ -355,7 +379,7 @@ else:
         clicked["lng"],
         slope_tif=SLOPE_TIF,
         app_gdf=load_app_gdf(),
-        plan_layers=plan_layers,        
+        plan_layers=plan_layers,
         zone_params=load_zone_params(),
         subzones=load_subzones(),
         aei_zones=load_aei(),
@@ -394,8 +418,7 @@ else:
         lote_min = pot.get("area_min_m2")
         p3.metric("Lote mínimo", f"{lote_min} m²" if lote_min else "—")
 
-        # Buildable-area estimate: lot area × CA. The user adjusts the lot
-        # to their terrain (defaults to the zone's minimum lot).
+        # Buildable-area estimate: lot area × CA (defaults to the zone's min lot).
         if isinstance(bas, (int, float)):
             lote = st.number_input(
                 "Área do lote (m²) — ajuste para o seu terreno",
@@ -417,17 +440,23 @@ else:
             "valores indicativos — confirme na lei/prefeitura."
         )
 
-    # Indicative buildability verdict (potential × constraints).
     verd = viability_verdict(info)
     st.markdown(f"### {verd['icon']} Veredito: potencial **{verd['level']}**")
     for reason in verd["reasons"]:
         st.markdown(f"- {reason}")
     st.caption("Leitura indicativa — não substitui parecer técnico, jurídico ou ambiental.")
-
     st.caption(f"Coordenada: {clicked['lat']:.5f}, {clicked['lng']:.5f}")
 
 
-# ----- Debug (collapsible) ------------------------------------------------
-
-with st.expander("Manifest carregado (debug)"):
-    st.json(manifest, expanded=False)
+if size_choice == "Amplo":
+    # Map full width; controls + inspect panel below, maximized horizontally.
+    map_state = _render_map(_layout["height"])
+    _size_control()
+    render_inspect_panel(map_state)
+else:
+    col_map, col_info = st.columns(_layout["ratio"], gap="medium")
+    with col_map:
+        map_state = _render_map(_layout["height"])
+        _size_control()
+    with col_info:
+        render_inspect_panel(map_state)
