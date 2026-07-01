@@ -20,6 +20,26 @@ st.set_page_config(
     page_title="Construction Viability Map",
     page_icon="🗺️",
     layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# Trim the sidebar so the map gets more room (Streamlit's default is ~336px).
+# Scope the override to the EXPANDED state only: when collapsed the rule
+# drops out, so Streamlit's native collapse and the main-area reflow
+# (reclaiming the freed width) keep working.
+st.markdown(
+    """
+    <style>
+      /* Zoom the whole app out a bit so more fits on screen. */
+      html { zoom: 0.85; }
+      section[data-testid="stSidebar"][aria-expanded="true"] {
+        width: 280px !important;
+        min-width: 280px !important;
+        max-width: 280px !important;
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
 # ----- Region + paths -----------------------------------------------------
@@ -97,7 +117,7 @@ GROUP_LABELS = {
     "master_plan": "Plano Diretor (LC 173/2024)",
     "reference": "Referência",
 }
-GROUP_ORDER = ["terrain", "environmental", "master_plan", "reference"]
+GROUP_ORDER = ["master_plan", "terrain", "environmental", "reference"]
 
 st.sidebar.title("Camadas")
 st.sidebar.caption(
@@ -114,7 +134,7 @@ for group_id in GROUP_ORDER:
 
     with st.sidebar.expander(
         GROUP_LABELS[group_id],
-        expanded=(group_id != "master_plan"),
+        expanded=False,
     ):
         for layer in group_layers:
             show = st.checkbox(
