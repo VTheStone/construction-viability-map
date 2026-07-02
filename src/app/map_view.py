@@ -148,6 +148,7 @@ def build_map(
     zoom: int,
     raster_layers: list[RasterLayerSpec],
     vector_layers: list[VectorLayerSpec],
+    highlight_gdf: gpd.GeoDataFrame | None = None,
 ) -> folium.Map:
     """Assemble the Folium map with all overlays + a (grouped) LayerControl.
 
@@ -238,7 +239,30 @@ def build_map(
                 fmap, layer.label_gdf, layer.name, layer.label_field, layer.show
             )
 
+    # Search highlight: a bright outline over the zones matching the current
+    # potential-search criteria. control=False keeps it out of the
+    # LayerControl (transient result, not a toggleable layer); fit_bounds
+    # frames the matches.
+    if highlight_gdf is not None and not highlight_gdf.empty:
+        fg = folium.FeatureGroup(name="Zonas encontradas", show=True, control=False)
+        folium.GeoJson(
+            highlight_gdf.__geo_interface__,
+            style_function=lambda _f: {
+                "color": "#ff2d55",
+                "weight": 3,
+                "fillColor": "#ff2d55",
+                "fillOpacity": 0.25,
+            },
+            tooltip=folium.GeoJsonTooltip(fields=["zone_code"], sticky=False),
+        ).add_to(fg)
+        fg.add_to(fmap)
+        b = highlight_gdf.total_bounds  # minx, miny, maxx, maxy
+        fmap.fit_bounds([[b[1], b[0]], [b[3], b[2]]])
+
     # The standard LayerControl handles non-grouped layers (rasters and
+    # ungrouped vectors). GroupedLayerControl adds the grouped sublayers
+    # below, with a heading per group.
+    folium.LayerControl(collapsed=False).add_to(fmap)    # The standard LayerControl handles non-grouped layers (rasters and
     # ungrouped vectors). GroupedLayerControl adds the grouped sublayers
     # below, with a heading per group.
     folium.LayerControl(collapsed=False).add_to(fmap)
