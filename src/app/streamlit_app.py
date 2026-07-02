@@ -144,6 +144,7 @@ def _add_to_history(point, origin, info, verd):
             "verdict": verd,
         }
     )
+    st.session_state.pop("report_pdf", None)
     st.toast("Ponto salvo no histórico ✅")
 
 
@@ -176,6 +177,94 @@ def _history_details_md(entry):
     lines.append(f"**Veredito:** {verd['icon']} potencial {verd['level']}")
     lines += [f"- {r}" for r in verd["reasons"]]
     return "\n\n".join(lines)
+
+def _static_map(lat, lng, zoom=15, size=(480, 300)):
+    """Small OSM map centered on (lat, lng) with a marker. Returns a PIL
+    image, or None on any network/render error."""
+    try:
+        from staticmap import CircleMarker, StaticMap
+
+        m = StaticMap(
+            size[0], size[1],
+            url_template="https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        )
+        m.add_marker(CircleMarker((lng, lat), "#ff2d55", 14))
+        return m.render(zoom=zoom)
+    except Exception:
+        return None
+
+
+def build_report_pdf(history):
+    """One PDF section per saved point (typed location, map thumbnail, and
+    all inspected facts). Returns PDF bytes. Core PDF fonts are latin-1, so
+    text is sanitized (accents kept, emoji dropped)."""
+    from fpdf import FPDF
+    from fpdf.enums import XPos, YPos
+
+    def _txt(s):
+        return str(s).encode("latin-1", "ignore").decode("latin-1")
+
+    pdf = FPDF(format="A4")
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+
+    def fact(label, value):
+        pdf.multi_cell(0, 6, _txt(f"{label} {value}"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+
+    pdf.set_font("helvetica", "B", 16)
+    pdf.multi_cell(0, 10, _txt("Relatório de Viabilidade — São José/SC"),
+                   new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("helvetica", "", 9)
+    pdf.set_text_color(120, 120, 120)
+    pdf.multi_cell(0, 6, _txt(
+        f"{len(history)} local(is) - parâmetros LC 173/2024 (Tabela 01) - valores indicativos"
+    ), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_text_color(0, 0, 0)
+    pdf.ln(3)
+
+    for i, entry in enumerate(history, 1):
+        info, verd = entry["info"], entry["verdict"]
+
+        pdf.set_font("helvetica", "B", 13)
+        pdf.multi_cell(0, 7, _txt(f"{i}. {entry['typed']}"),
+                       new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+
+        img = _static_map(entry["lat"], entry["lng"])
+        if img is not None:
+            try:
+                pdf.image(img, w=100)
+            except Exception:
+                pass
+        pdf.ln(1)
+
+        pdf.set_font("helvetica", "", 10)
+        fact("Localização digitada:", entry["typed"])
+        fact("Coordenada:", f"{entry['lat']:.5f}, {entry['lng']:.5f}")
+        if "slope_deg" in info:
+            pct = f" / {info['slope_pct']}%" if "slope_pct" in info else ""
+            fact("Declividade:", f"{info['slope_deg']}\u00b0{pct}")
+        if "elevation_m" in info:
+            fact("Elevação:", f"{info['elevation_m']} m")
+        if "in_app" in info:
+            fact("Em APP:", "Sim" if info["in_app"] else "Não")
+        pot = info.get("potential")
+        if pot:
+            pav = pot.get("pavimentos_max")
+            pav_s = "Livre (ate 25)" if pav == "LIVRE" else str(pav)
+            zona = pot["zone_code"] + (
+                f" (prevalece sobre {pot['prevalece_sobre']})"
+                if pot.get("prevalece_sobre") else ""
+            )
+            fact("Zona:", zona)
+            fact("Pavimentos:", pav_s)
+            fact("CA (basico -> maximo):", f"{pot.get('ca_basico')} -> {pot.get('ca_maximo')}")
+            fact("Lote minimo:", f"{pot.get('area_min_m2')} m2")
+        fact("Veredito:", f"potencial {verd['level']}")
+        for r in verd["reasons"]:
+            fact("-", r)
+        pdf.ln(4)
+
+    return bytes(pdf.output())
 
 @st.cache_data
 def slope_threshold_png(threshold_pct: int) -> str:
@@ -662,7 +751,24 @@ else:
                 st.markdown(_history_details_md(_entry))
         if _col_del.button("➖", key=f"del_{_entry['id']}", help="Remover do histórico"):
             st.session_state["history"] = [e for e in _history if e["id"] != _entry["id"]]
+            st.session_state.pop("report_pdf", None)
             st.rerun()
-    if st.button("🗑️ Limpar histórico", key="clear_history"):
+
+    _c_clear, _c_report = st.columns(2)
+    if _c_clear.button("🗑️ Limpar histórico", key="clear_history", use_container_width=True):
         st.session_state["history"] = []
+        st.session_state.pop("report_pdf", None)
         st.rerun()
+    if _c_report.button("📄 Gerar relatório PDF", key="gen_report", use_container_width=True):
+        with st.spinner("Gerando relatório (baixando miniaturas do mapa)…"):
+            st.session_state["report_pdf"] = build_report_pdf(st.session_state["history"])
+    if st.session_state.get("report_pdf"):
+        _c_report.download_button(
+            "⬇️ Baixar relatório",
+            data=st.session_state["report_pdf"],
+            file_name="relatorio_viabilidade_sao_jose.pdf",
+            mime="application/pdf",
+            key="dl_report",
+            use_container_width=True,
+        )
+        
