@@ -149,6 +149,7 @@ def build_map(
     raster_layers: list[RasterLayerSpec],
     vector_layers: list[VectorLayerSpec],
     highlight_gdf: gpd.GeoDataFrame | None = None,
+    marker: tuple[float, float] | None = None,
 ) -> folium.Map:
     """Assemble the Folium map with all overlays + a (grouped) LayerControl.
 
@@ -239,10 +240,19 @@ def build_map(
                 fmap, layer.label_gdf, layer.name, layer.label_field, layer.show
             )
 
+    # Navigation marker (from the "go to coordinate/address" tool). When set,
+    # it takes priority over fitting to the search results.
+    if marker is not None:
+        folium.Marker(
+            location=[marker[0], marker[1]],
+            tooltip="Local selecionado",
+            icon=folium.Icon(color="red"),
+        ).add_to(fmap)
+
     # Search highlight: a bright outline over the zones matching the current
     # potential-search criteria. control=False keeps it out of the
     # LayerControl (transient result, not a toggleable layer); fit_bounds
-    # frames the matches.
+    # frames the matches (unless a nav marker already set the center).
     if highlight_gdf is not None and not highlight_gdf.empty:
         fg = folium.FeatureGroup(name="Zonas encontradas", show=True, control=False)
         folium.GeoJson(
@@ -256,8 +266,9 @@ def build_map(
             tooltip=folium.GeoJsonTooltip(fields=["zone_code"], sticky=False),
         ).add_to(fg)
         fg.add_to(fmap)
-        b = highlight_gdf.total_bounds  # minx, miny, maxx, maxy
-        fmap.fit_bounds([[b[1], b[0]], [b[3], b[2]]])
+        if marker is None:
+            b = highlight_gdf.total_bounds  # minx, miny, maxx, maxy
+            fmap.fit_bounds([[b[1], b[0]], [b[3], b[2]]])
 
     # The standard LayerControl handles non-grouped layers (rasters and
     # ungrouped vectors). GroupedLayerControl adds the grouped sublayers
