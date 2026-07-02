@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import json
 
 import geopandas as gpd
+import pandas as pd
 import streamlit as st
 from streamlit_folium import st_folium
 
@@ -30,8 +31,10 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-      /* Zoom the whole app out a bit so more fits on screen. */
-      html { zoom: 0.85; }
+      /* Compact, denser UI. Using font-size (not `zoom`) keeps Streamlit's
+         BaseWeb sliders rendering correctly — page zoom desyncs the filled
+         track from the thumb. */
+      html { font-size: 14px; }
       section[data-testid="stSidebar"][aria-expanded="true"] {
         width: 280px !important;
         min-width: 280px !important;
@@ -320,6 +323,27 @@ with st.expander("🔎 Buscar zonas por potencial construtivo", expanded=False):
         "(Tabela 01) · valores indicativos."
     )
 
+    # Highlight the matches on the map — only when a filter is actually
+    # active (the default 0/0 would otherwise light up every zone).
+    search_highlight = None
+    destacar = st.checkbox(
+        "🗺️ Destacar as zonas encontradas no mapa",
+        value=True,
+        key="search_highlight",
+    )
+    if destacar and matches and (min_pav > 0 or min_ca > 0):
+        _codes = {m["Zona"] for m in matches}
+        _parts = [
+            g[g["zone_code"].astype(str).isin(_codes)]
+            for g in (load_subzones(), load_aei())
+            if g is not None and not g.empty
+        ]
+        _parts = [g for g in _parts if not g.empty]
+        if _parts:
+            search_highlight = gpd.GeoDataFrame(
+                pd.concat(_parts, ignore_index=True), crs="EPSG:4326"
+            )
+
 # Map width presets. The choice sets the map:info column ratio + height.
 # In "Amplo" the map goes full width and the inspect panel drops below it,
 # maximized horizontally. The control itself is rendered *below* the map.
@@ -343,6 +367,7 @@ def _render_map(height: int):
         zoom=DEFAULT_ZOOM,
         raster_layers=raster_specs,
         vector_layers=vector_specs,
+        highlight_gdf=search_highlight,
     )
     return st_folium(
         fmap, width=None, height=height, returned_objects=["last_clicked"]
@@ -445,6 +470,46 @@ def render_inspect_panel(map_state):
     for reason in verd["reasons"]:
         st.markdown(f"- {reason}")
     st.caption("Leitura indicativa — não substitui parecer técnico, jurídico ou ambiental.")
+
+    # Justification (hidden by default): which segmentations cover the point
+    # and which one defined the shown parameters (overlay precedence).
+    with st.expander("ℹ️ Por que estes valores? (detalhes)"):
+        det = []
+        if pot and pot.get("prevalece_sobre"):
+            det.append(
+                f"Este ponto está na **{pot['zone_code']}** (Área de Especial Interesse), "
+                f"que se **sobrepõe** à zona base **{pot['prevalece_sobre']}**. Pela regra de "
+                "sobreposição da LC 173/2024 (Quadro 01/Anexo 16), os parâmetros da AEI "
+                f"**prevalecem** — por isso os valores acima são os da {pot['zone_code']}."
+            )
+        elif pot:
+            det.append(
+                f"Este ponto está na zona base **{pot['zone_code']}**, e nenhuma Área de "
+                "Especial Interesse com parâmetros próprios o cobre — por isso os valores "
+                f"acima são os da própria {pot['zone_code']}."
+            )
+        if info.get("preservacao_aei"):
+            det.append(
+                f"O ponto está em **{info['preservacao_aei']}** (AEI Ambiental de preservação), "
+                "onde a construção é em regra vedada — daí o veredito restritivo."
+            )
+        if info.get("in_app"):
+            det.append(
+                "O ponto cai em **APP** (faixa de preservação permanente, ex.: margem de rio), "
+                "que impõe restrição independentemente da zona."
+            )
+        if not det:
+            det.append(
+                "Não há parâmetros construtivos resolvidos para este ponto (pode ser área "
+                "rural, de preservação, ou fora das subzonas mapeadas)."
+            )
+        for d in det:
+            st.markdown("- " + d)
+        st.caption(
+            "Resolução: subzona por ponto-em-polígono (17 subzonas desenhadas à mão) "
+            "+ AEIs sobrepostas · LC 173/2024."
+        )
+
     st.caption(f"Coordenada: {clicked['lat']:.5f}, {clicked['lng']:.5f}")
 
 
