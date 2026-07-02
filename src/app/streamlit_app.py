@@ -124,6 +124,58 @@ def geocode_address(query: str):
         return None
     return (loc.latitude, loc.longitude) if loc else None
 
+def _add_to_history(point, origin, info, verd):
+    """Append the inspected point (with its info + verdict + typed input) to
+    the in-memory history. Deduped by rounded coordinate."""
+    hist = st.session_state.setdefault("history", [])
+    key = (round(point["lat"], 5), round(point["lng"], 5))
+    if any((round(e["lat"], 5), round(e["lng"], 5)) == key for e in hist):
+        st.toast("Este ponto já está no histórico.")
+        return
+    st.session_state["history_seq"] = st.session_state.get("history_seq", 0) + 1
+    hist.append(
+        {
+            "id": st.session_state["history_seq"],
+            "kind": (origin or {}).get("kind", "click"),
+            "typed": (origin or {}).get("typed", f"{point['lat']:.5f}, {point['lng']:.5f}"),
+            "lat": point["lat"],
+            "lng": point["lng"],
+            "info": info,
+            "verdict": verd,
+        }
+    )
+    st.toast("Ponto salvo no histórico ✅")
+
+
+def _history_details_md(entry):
+    """Markdown block with every fact about a saved point (reused in the PDF)."""
+    info, verd = entry["info"], entry["verdict"]
+    lines = [
+        f"**Localização digitada:** {entry['typed']}",
+        f"**Coordenada:** {entry['lat']:.5f}, {entry['lng']:.5f}",
+    ]
+    if "slope_deg" in info:
+        pct = f" / {info['slope_pct']}%" if "slope_pct" in info else ""
+        lines.append(f"**Declividade:** {info['slope_deg']}°{pct}")
+    if "elevation_m" in info:
+        lines.append(f"**Elevação:** {info['elevation_m']} m")
+    if "in_app" in info:
+        lines.append(f"**Em APP:** {'Sim' if info['in_app'] else 'Não'}")
+    pot = info.get("potential")
+    if pot:
+        pav = pot.get("pavimentos_max")
+        pav_s = "Livre (até 25)" if pav == "LIVRE" else str(pav)
+        zona = pot["zone_code"] + (
+            f" (prevalece sobre {pot['prevalece_sobre']})" if pot.get("prevalece_sobre") else ""
+        )
+        lines.append(f"**Zona:** {zona}")
+        lines.append(
+            f"**Pavimentos:** {pav_s} · **CA:** {pot.get('ca_basico')} → "
+            f"{pot.get('ca_maximo')} · **Lote mín.:** {pot.get('area_min_m2')} m²"
+        )
+    lines.append(f"**Veredito:** {verd['icon']} potencial {verd['level']}")
+    lines += [f"- {r}" for r in verd["reasons"]]
+    return "\n\n".join(lines)
 
 @st.cache_data
 def slope_threshold_png(threshold_pct: int) -> str:
@@ -371,6 +423,10 @@ with st.expander("🧭 Ir para um local (coordenada ou endereço)", expanded=Fal
         )
         if st.button("Ir para coordenada", key="nav_go_coord"):
             st.session_state["nav_target"] = (float(_in_lat), float(_in_lng))
+            st.session_state["nav_input"] = {
+                "kind": "coord",
+                "typed": f"{float(_in_lat):.5f}, {float(_in_lng):.5f}",
+            }
     with _t_addr:
         _addr = st.text_input(
             "Endereço", key="nav_addr_in", placeholder="Rua, bairro — São José/SC"
@@ -380,6 +436,7 @@ with st.expander("🧭 Ir para um local (coordenada ou endereço)", expanded=Fal
                 _hit = geocode_address(_addr.strip())
                 if _hit:
                     st.session_state["nav_target"] = _hit
+                    st.session_state["nav_input"] = {"kind": "address", "typed": _addr.strip()}
                 else:
                     st.warning("Endereço não encontrado.")
     if st.session_state.get("nav_target"):
@@ -388,6 +445,7 @@ with st.expander("🧭 Ir para um local (coordenada ou endereço)", expanded=Fal
         _n1.caption(f"📍 Local marcado: {_nt[0]:.5f}, {_nt[1]:.5f}")
         if _n2.button("Limpar", key="nav_clear"):
             del st.session_state["nav_target"]
+            st.session_state.pop("nav_input", None)
 
 # Map width presets. The choice sets the map:info column ratio + height.
 # In "Amplo" the map goes full width and the inspect panel drops below it,
@@ -434,10 +492,17 @@ def _size_control():
 def render_inspect_panel(map_state):
     st.subheader("📍 Ponto inspecionado")
     clicked = (map_state or {}).get("last_clicked")
-    if not clicked and st.session_state.get("nav_target"):
+    origin = None
+    if clicked:
+        origin = {"kind": "click", "typed": f"{clicked['lat']:.5f}, {clicked['lng']:.5f}"}
+    elif st.session_state.get("nav_target"):
         _t = st.session_state["nav_target"]
         clicked = {"lat": _t[0], "lng": _t[1]}
-    if not clicked:    
+        origin = st.session_state.get("nav_input") or {
+            "kind": "coord",
+            "typed": f"{_t[0]:.5f}, {_t[1]:.5f}",
+        }
+    if not clicked:  
         st.caption(
             "Clique em qualquer ponto do mapa para ver declividade, elevação, "
             "APP e a zona do Plano Diretor das camadas ativas naquele ponto."
@@ -562,6 +627,8 @@ def render_inspect_panel(map_state):
 
     st.caption(f"Coordenada: {clicked['lat']:.5f}, {clicked['lng']:.5f}")
 
+    if st.button("💾 Salvar no histórico", key="save_history"):
+        _add_to_history(clicked, origin, info, verd)
 
 if size_choice == "Amplo":
     # Map full width; controls + inspect panel below, maximized horizontally.
@@ -575,3 +642,27 @@ else:
         _size_control()
     with col_info:
         render_inspect_panel(map_state)
+        
+# ----- Saved points history (below the map) -------------------------------
+st.markdown("---")
+st.subheader("🗂️ Histórico de pontos salvos")
+
+_history = st.session_state.get("history", [])
+if not _history:
+    st.caption(
+        "Nenhum ponto salvo ainda. Clique num ponto (ou busque um) e use "
+        "**💾 Salvar no histórico** no painel do ponto."
+    )
+else:
+    for _entry in list(_history):
+        _col_exp, _col_del = st.columns([0.92, 0.08])
+        with _col_exp:
+            _v = _entry["verdict"]
+            with st.expander(f"{_v['icon']} {_entry['typed']} — potencial {_v['level']}"):
+                st.markdown(_history_details_md(_entry))
+        if _col_del.button("➖", key=f"del_{_entry['id']}", help="Remover do histórico"):
+            st.session_state["history"] = [e for e in _history if e["id"] != _entry["id"]]
+            st.rerun()
+    if st.button("🗑️ Limpar histórico", key="clear_history"):
+        st.session_state["history"] = []
+        st.rerun()
