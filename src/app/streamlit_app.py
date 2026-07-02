@@ -110,6 +110,20 @@ def load_aei():
 
     return load_aei_zones(REGION_SLUG)
 
+@st.cache_data(show_spinner="Buscando endereço…")
+def geocode_address(query: str):
+    """Free-text address -> (lat, lng) via OSM Nominatim, biased to São
+    José/SC. Cached so reruns don't re-hit the service; None on miss/error."""
+    from geopy.geocoders import Nominatim
+
+    try:
+        loc = Nominatim(user_agent="construction-viability-map").geocode(
+            f"{query}, São José, Santa Catarina, Brasil", timeout=8
+        )
+    except Exception:
+        return None
+    return (loc.latitude, loc.longitude) if loc else None
+
 
 @st.cache_data
 def slope_threshold_png(threshold_pct: int) -> str:
@@ -344,6 +358,37 @@ with st.expander("🔎 Buscar zonas por potencial construtivo", expanded=False):
                 pd.concat(_parts, ignore_index=True), crs="EPSG:4326"
             )
 
+# ----- Navigate to a coordinate / address --------------------------------
+with st.expander("🧭 Ir para um local (coordenada ou endereço)", expanded=False):
+    _t_coord, _t_addr = st.tabs(["Coordenada", "Endereço"])
+    with _t_coord:
+        _c1, _c2 = st.columns(2)
+        _in_lat = _c1.number_input(
+            "Latitude", value=float(DEFAULT_CENTER_LAT), format="%.5f", key="nav_lat_in"
+        )
+        _in_lng = _c2.number_input(
+            "Longitude", value=float(DEFAULT_CENTER_LON), format="%.5f", key="nav_lng_in"
+        )
+        if st.button("Ir para coordenada", key="nav_go_coord"):
+            st.session_state["nav_target"] = (float(_in_lat), float(_in_lng))
+    with _t_addr:
+        _addr = st.text_input(
+            "Endereço", key="nav_addr_in", placeholder="Rua, bairro — São José/SC"
+        )
+        if st.button("Buscar endereço", key="nav_go_addr"):
+            if _addr.strip():
+                _hit = geocode_address(_addr.strip())
+                if _hit:
+                    st.session_state["nav_target"] = _hit
+                else:
+                    st.warning("Endereço não encontrado.")
+    if st.session_state.get("nav_target"):
+        _nt = st.session_state["nav_target"]
+        _n1, _n2 = st.columns([3, 1])
+        _n1.caption(f"📍 Local marcado: {_nt[0]:.5f}, {_nt[1]:.5f}")
+        if _n2.button("Limpar", key="nav_clear"):
+            del st.session_state["nav_target"]
+
 # Map width presets. The choice sets the map:info column ratio + height.
 # In "Amplo" the map goes full width and the inspect panel drops below it,
 # maximized horizontally. The control itself is rendered *below* the map.
@@ -361,14 +406,16 @@ _layout = _MAP_LAYOUT[size_choice]
 def _render_map(height: int):
     # Always render the map; with no layers enabled the user still sees the
     # OSM basemap centered on São José — the default state.
+    nav = st.session_state.get("nav_target")
     fmap = build_map(
-        center_lat=DEFAULT_CENTER_LAT,
-        center_lon=DEFAULT_CENTER_LON,
-        zoom=DEFAULT_ZOOM,
+        center_lat=nav[0] if nav else DEFAULT_CENTER_LAT,
+        center_lon=nav[1] if nav else DEFAULT_CENTER_LON,
+        zoom=16 if nav else DEFAULT_ZOOM,
         raster_layers=raster_specs,
         vector_layers=vector_specs,
         highlight_gdf=search_highlight,
-    )
+        marker=nav,
+    )    
     return st_folium(
         fmap, width=None, height=height, returned_objects=["last_clicked"]
     )
@@ -387,7 +434,10 @@ def _size_control():
 def render_inspect_panel(map_state):
     st.subheader("📍 Ponto inspecionado")
     clicked = (map_state or {}).get("last_clicked")
-    if not clicked:
+    if not clicked and st.session_state.get("nav_target"):
+        _t = st.session_state["nav_target"]
+        clicked = {"lat": _t[0], "lng": _t[1]}
+    if not clicked:    
         st.caption(
             "Clique em qualquer ponto do mapa para ver declividade, elevação, "
             "APP e a zona do Plano Diretor das camadas ativas naquele ponto."

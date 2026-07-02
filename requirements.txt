@@ -25,6 +25,9 @@ streamlit-folium>=0.18
 # HTTP / downloads
 requests>=2.31
 
+# Address geocoding (app "go to address" — OSM Nominatim client)
+geopy>=2.4
+
 # Visualization / image output
 matplotlib>=3.8
 pillow>=10.0
