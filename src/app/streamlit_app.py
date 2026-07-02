@@ -199,6 +199,7 @@ def build_report_pdf(history):
     all inspected facts). Returns PDF bytes. Core PDF fonts are latin-1, so
     text is sanitized (accents kept, emoji dropped)."""
     from fpdf import FPDF
+    from fpdf.enums import XPos, YPos
 
     def _txt(s):
         return str(s).encode("latin-1", "ignore").decode("latin-1")
@@ -208,15 +209,16 @@ def build_report_pdf(history):
     pdf.add_page()
 
     def fact(label, value):
-        pdf.multi_cell(0, 6, _txt(f"{label} {value}"))
+        pdf.multi_cell(0, 6, _txt(f"{label} {value}"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
     pdf.set_font("helvetica", "B", 16)
-    pdf.multi_cell(0, 10, _txt("Relatório de Viabilidade — São José/SC"))
+    pdf.multi_cell(0, 10, _txt("Relatório de Viabilidade — São José/SC"),
+                   new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("helvetica", "", 9)
     pdf.set_text_color(120, 120, 120)
     pdf.multi_cell(0, 6, _txt(
         f"{len(history)} local(is) - parâmetros LC 173/2024 (Tabela 01) - valores indicativos"
-    ))
+    ), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_text_color(0, 0, 0)
     pdf.ln(3)
 
@@ -224,7 +226,8 @@ def build_report_pdf(history):
         info, verd = entry["info"], entry["verdict"]
 
         pdf.set_font("helvetica", "B", 13)
-        pdf.multi_cell(0, 7, _txt(f"{i}. {entry['typed']}"))
+        pdf.multi_cell(0, 7, _txt(f"{i}. {entry['typed']}"),
+                       new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
         img = _static_map(entry["lat"], entry["lng"])
         if img is not None:
@@ -751,20 +754,21 @@ else:
             st.session_state.pop("report_pdf", None)
             st.rerun()
 
-    _r1, _r2 = st.columns(2)
-    if _r1.button("📄 Gerar relatório PDF", key="gen_report"):
+    _c_clear, _c_report = st.columns(2)
+    if _c_clear.button("🗑️ Limpar histórico", key="clear_history", use_container_width=True):
+        st.session_state["history"] = []
+        st.session_state.pop("report_pdf", None)
+        st.rerun()
+    if _c_report.button("📄 Gerar relatório PDF", key="gen_report", use_container_width=True):
         with st.spinner("Gerando relatório (baixando miniaturas do mapa)…"):
             st.session_state["report_pdf"] = build_report_pdf(st.session_state["history"])
     if st.session_state.get("report_pdf"):
-        _r2.download_button(
+        _c_report.download_button(
             "⬇️ Baixar relatório",
             data=st.session_state["report_pdf"],
             file_name="relatorio_viabilidade_sao_jose.pdf",
             mime="application/pdf",
             key="dl_report",
+            use_container_width=True,
         )
-    if st.button("🗑️ Limpar histórico", key="clear_history"):
-        st.session_state["history"] = []
-        st.session_state.pop("report_pdf", None)
-        st.rerun()
         
