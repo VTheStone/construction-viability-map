@@ -28,6 +28,10 @@ requests>=2.31
 # Address geocoding (app "go to address" — OSM Nominatim client)
 geopy>=2.4
 
+# Point-history report: PDF generation + static OSM map thumbnails
+fpdf2>=2.7
+staticmap>=0.5
+
 # Visualization / image output
 matplotlib>=3.8
 pillow>=10.0
