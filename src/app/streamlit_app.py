@@ -201,6 +201,42 @@ def _verdict_badge(level):
     return _VERDICT_BADGE.get(level, ":material/help:")
 
 
+def _justification_lines(info):
+    """Plain-text reasons explaining which segmentation defined the values
+    (overlay precedence). Reused by the panel expander and the PDF report."""
+    pot = info.get("potential")
+    out = []
+    if pot and pot.get("prevalece_sobre"):
+        out.append(
+            f"Este ponto está na {pot['zone_code']} (Área de Especial Interesse), que se "
+            f"sobrepõe à zona base {pot['prevalece_sobre']}. Pela regra de sobreposição da "
+            "LC 173/2024 (Quadro 01/Anexo 16), os parâmetros da AEI prevalecem - por isso "
+            f"os valores são os da {pot['zone_code']}."
+        )
+    elif pot:
+        out.append(
+            f"Este ponto está na zona base {pot['zone_code']}, e nenhuma Área de Especial "
+            f"Interesse com parâmetros próprios o cobre - por isso os valores são os da "
+            f"própria {pot['zone_code']}."
+        )
+    if info.get("preservacao_aei"):
+        out.append(
+            f"O ponto está em {info['preservacao_aei']} (AEI Ambiental de preservação), onde "
+            "a construção é em regra vedada - daí o veredito restritivo."
+        )
+    if info.get("in_app"):
+        out.append(
+            "O ponto cai em APP (faixa de preservação permanente), que impõe restrição "
+            "independentemente da zona."
+        )
+    if not out:
+        out.append(
+            "Não há parâmetros construtivos resolvidos para este ponto (pode ser área rural, "
+            "de preservação, ou fora das subzonas mapeadas)."
+        )
+    return out
+
+
 def _static_map(lat, lng, zoom=15, size=(480, 300)):
     """Small OSM map centered on (lat, lng) with a marker. Returns a PIL
     image, or None on any network/render error."""
@@ -285,6 +321,12 @@ def build_report_pdf(history):
         fact("Veredito:", f"potencial {verd['level']}")
         for r in verd["reasons"]:
             fact("-", r)
+        pdf.ln(1)
+        pdf.set_font("helvetica", "B", 10)
+        pdf.multi_cell(0, 6, _txt("Justificativa:"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.set_font("helvetica", "", 9)
+        for j in _justification_lines(info):
+            pdf.multi_cell(0, 5, _txt("- " + j), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.ln(4)
 
     return bytes(pdf.output())
@@ -701,36 +743,7 @@ def render_inspect_panel(map_state):
     # Justification (hidden by default): which segmentations cover the point
     # and which one defined the shown parameters (overlay precedence).
     with st.expander("Por que estes valores? (detalhes)", icon=":material/info:"):
-        det = []
-        if pot and pot.get("prevalece_sobre"):
-            det.append(
-                f"Este ponto está na **{pot['zone_code']}** (Área de Especial Interesse), "
-                f"que se **sobrepõe** à zona base **{pot['prevalece_sobre']}**. Pela regra de "
-                "sobreposição da LC 173/2024 (Quadro 01/Anexo 16), os parâmetros da AEI "
-                f"**prevalecem** — por isso os valores acima são os da {pot['zone_code']}."
-            )
-        elif pot:
-            det.append(
-                f"Este ponto está na zona base **{pot['zone_code']}**, e nenhuma Área de "
-                "Especial Interesse com parâmetros próprios o cobre — por isso os valores "
-                f"acima são os da própria {pot['zone_code']}."
-            )
-        if info.get("preservacao_aei"):
-            det.append(
-                f"O ponto está em **{info['preservacao_aei']}** (AEI Ambiental de preservação), "
-                "onde a construção é em regra vedada — daí o veredito restritivo."
-            )
-        if info.get("in_app"):
-            det.append(
-                "O ponto cai em **APP** (faixa de preservação permanente, ex.: margem de rio), "
-                "que impõe restrição independentemente da zona."
-            )
-        if not det:
-            det.append(
-                "Não há parâmetros construtivos resolvidos para este ponto (pode ser área "
-                "rural, de preservação, ou fora das subzonas mapeadas)."
-            )
-        for d in det:
+        for d in _justification_lines(info):
             st.markdown("- " + d)
         st.caption(
             "Resolução: subzona por ponto-em-polígono (17 subzonas desenhadas à mão) "
