@@ -19,7 +19,7 @@ from src.app.map_view import RasterLayerSpec, VectorLayerSpec, build_map
 
 st.set_page_config(
     page_title="Construction Viability Map",
-    page_icon="🗺️",
+    page_icon=":material/map:",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -35,6 +35,15 @@ st.markdown(
          BaseWeb sliders rendering correctly — page zoom desyncs the filled
          track from the thumb. */
       html { font-size: 14px; }
+
+      /* --- Typography & spacing (estilo-3) --- */
+      /* Tighter page padding for a denser, product-like layout. */
+      .block-container { padding-top: 2.5rem; padding-bottom: 3rem; }
+      /* App title a touch smaller so it doesn't dominate the header. */
+      h1 { font-size: 2rem; line-height: 1.2; }
+      /* Smaller st.metric so values fit narrow columns (no more "5.6°…"). */
+      [data-testid="stMetricValue"] { font-size: 1.1rem; line-height: 1.3; }
+      [data-testid="stMetricLabel"] { font-size: 0.78rem; }
       section[data-testid="stSidebar"][aria-expanded="true"] {
         width: 280px !important;
         min-width: 280px !important;
@@ -174,9 +183,59 @@ def _history_details_md(entry):
             f"**Pavimentos:** {pav_s} · **CA:** {pot.get('ca_basico')} → "
             f"{pot.get('ca_maximo')} · **Lote mín.:** {pot.get('area_min_m2')} m²"
         )
-    lines.append(f"**Veredito:** {verd['icon']} potencial {verd['level']}")
+    lines.append(f"**Veredito:** {_verdict_badge(verd['level'])} potencial {verd['level']}")
     lines += [f"- {r}" for r in verd["reasons"]]
     return "\n\n".join(lines)
+
+
+_VERDICT_BADGE = {
+    "alto": ":green[:material/check_circle:]",
+    "médio": ":orange[:material/change_history:]",
+    "baixo": ":orange[:material/warning:]",
+    "restrito": ":red[:material/block:]",
+}
+
+
+def _verdict_badge(level):
+    """Colored Material icon for a verdict level (UI only)."""
+    return _VERDICT_BADGE.get(level, ":material/help:")
+
+
+def _justification_lines(info):
+    """Plain-text reasons explaining which segmentation defined the values
+    (overlay precedence). Reused by the panel expander and the PDF report."""
+    pot = info.get("potential")
+    out = []
+    if pot and pot.get("prevalece_sobre"):
+        out.append(
+            f"Este ponto está na {pot['zone_code']} (Área de Especial Interesse), que se "
+            f"sobrepõe à zona base {pot['prevalece_sobre']}. Pela regra de sobreposição da "
+            "LC 173/2024 (Quadro 01/Anexo 16), os parâmetros da AEI prevalecem - por isso "
+            f"os valores são os da {pot['zone_code']}."
+        )
+    elif pot:
+        out.append(
+            f"Este ponto está na zona base {pot['zone_code']}, e nenhuma Área de Especial "
+            f"Interesse com parâmetros próprios o cobre - por isso os valores são os da "
+            f"própria {pot['zone_code']}."
+        )
+    if info.get("preservacao_aei"):
+        out.append(
+            f"O ponto está em {info['preservacao_aei']} (AEI Ambiental de preservação), onde "
+            "a construção é em regra vedada - daí o veredito restritivo."
+        )
+    if info.get("in_app"):
+        out.append(
+            "O ponto cai em APP (faixa de preservação permanente), que impõe restrição "
+            "independentemente da zona."
+        )
+    if not out:
+        out.append(
+            "Não há parâmetros construtivos resolvidos para este ponto (pode ser área rural, "
+            "de preservação, ou fora das subzonas mapeadas)."
+        )
+    return out
+
 
 def _static_map(lat, lng, zoom=15, size=(480, 300)):
     """Small OSM map centered on (lat, lng) with a marker. Returns a PIL
@@ -262,6 +321,12 @@ def build_report_pdf(history):
         fact("Veredito:", f"potencial {verd['level']}")
         for r in verd["reasons"]:
             fact("-", r)
+        pdf.ln(1)
+        pdf.set_font("helvetica", "B", 10)
+        pdf.multi_cell(0, 6, _txt("Justificativa:"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.set_font("helvetica", "", 9)
+        for j in _justification_lines(info):
+            pdf.multi_cell(0, 5, _txt("- " + j), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.ln(4)
 
     return bytes(pdf.output())
@@ -448,9 +513,13 @@ if slope_threshold > 0 and SLOPE_TIF.exists():
 # ----- Render -------------------------------------------------------------
 
 st.title("Mapa de Viabilidade de Construção — São José/SC")
+st.caption(
+    "Explore as camadas do Plano Diretor e do terreno, clique num ponto para "
+    "ver o potencial construtivo, e salve locais para gerar um relatório."
+)
 
 # ----- Zone potential search (Phase 10 M7) -------------------------------
-with st.expander("🔎 Buscar zonas por potencial construtivo", expanded=False):
+with st.expander("Buscar zonas por potencial construtivo", expanded=False, icon=":material/search:"):
     _params = load_zone_params()
     f1, f2 = st.columns(2)
     min_pav = f1.slider("Pavimentos mínimos", 0, 25, 0, key="search_min_pav")
@@ -482,7 +551,7 @@ with st.expander("🔎 Buscar zonas por potencial construtivo", expanded=False):
     # active (the default 0/0 would otherwise light up every zone).
     search_highlight = None
     destacar = st.checkbox(
-        "🗺️ Destacar as zonas encontradas no mapa",
+        "Destacar as zonas encontradas no mapa",
         value=True,
         key="search_highlight",
     )
@@ -500,7 +569,7 @@ with st.expander("🔎 Buscar zonas por potencial construtivo", expanded=False):
             )
 
 # ----- Navigate to a coordinate / address --------------------------------
-with st.expander("🧭 Ir para um local (coordenada ou endereço)", expanded=False):
+with st.expander("Ir para um local (coordenada ou endereço)", expanded=False, icon=":material/explore:"):
     _t_coord, _t_addr = st.tabs(["Coordenada", "Endereço"])
     with _t_coord:
         _c1, _c2 = st.columns(2)
@@ -510,7 +579,7 @@ with st.expander("🧭 Ir para um local (coordenada ou endereço)", expanded=Fal
         _in_lng = _c2.number_input(
             "Longitude", value=float(DEFAULT_CENTER_LON), format="%.5f", key="nav_lng_in"
         )
-        if st.button("Ir para coordenada", key="nav_go_coord"):
+        if st.button("Ir para coordenada", key="nav_go_coord", type="primary", use_container_width=True):
             st.session_state["nav_target"] = (float(_in_lat), float(_in_lng))
             st.session_state["nav_input"] = {
                 "kind": "coord",
@@ -520,7 +589,7 @@ with st.expander("🧭 Ir para um local (coordenada ou endereço)", expanded=Fal
         _addr = st.text_input(
             "Endereço", key="nav_addr_in", placeholder="Rua, bairro — São José/SC"
         )
-        if st.button("Buscar endereço", key="nav_go_addr"):
+        if st.button("Buscar endereço", key="nav_go_addr", type="primary", use_container_width=True):
             if _addr.strip():
                 _hit = geocode_address(_addr.strip())
                 if _hit:
@@ -531,8 +600,8 @@ with st.expander("🧭 Ir para um local (coordenada ou endereço)", expanded=Fal
     if st.session_state.get("nav_target"):
         _nt = st.session_state["nav_target"]
         _n1, _n2 = st.columns([3, 1])
-        _n1.caption(f"📍 Local marcado: {_nt[0]:.5f}, {_nt[1]:.5f}")
-        if _n2.button("Limpar", key="nav_clear"):
+        _n1.caption(f":material/location_on: Local marcado: {_nt[0]:.5f}, {_nt[1]:.5f}")
+        if _n2.button("Limpar", key="nav_clear", use_container_width=True):
             del st.session_state["nav_target"]
             st.session_state.pop("nav_input", None)
 
@@ -579,7 +648,7 @@ def _size_control():
 
 
 def render_inspect_panel(map_state):
-    st.subheader("📍 Ponto inspecionado")
+    st.subheader(":material/location_searching: Ponto inspecionado")
     clicked = (map_state or {}).get("last_clicked")
     origin = None
     if clicked:
@@ -638,7 +707,7 @@ def render_inspect_panel(map_state):
         titulo = pot["zone_code"]
         if pot.get("prevalece_sobre"):
             titulo = f"{pot['zone_code']} (prevalece sobre {pot['prevalece_sobre']})"
-        st.markdown(f"**🏗️ Potencial construtivo — subzona {titulo}:**")
+        st.markdown(f":material/construction: **Potencial construtivo — subzona {titulo}:**")
         p1, p2, p3 = st.columns(3)
         pav = pot.get("pavimentos_max")
         p1.metric("Pavimentos", "Livre (até 25)" if pav == "LIVRE" else str(pav))
@@ -670,44 +739,15 @@ def render_inspect_panel(map_state):
         )
 
     verd = viability_verdict(info)
-    st.markdown(f"### {verd['icon']} Veredito: potencial **{verd['level']}**")
+    st.markdown(f"### {_verdict_badge(verd['level'])} Veredito: potencial **{verd['level']}**")
     for reason in verd["reasons"]:
         st.markdown(f"- {reason}")
     st.caption("Leitura indicativa — não substitui parecer técnico, jurídico ou ambiental.")
 
     # Justification (hidden by default): which segmentations cover the point
     # and which one defined the shown parameters (overlay precedence).
-    with st.expander("ℹ️ Por que estes valores? (detalhes)"):
-        det = []
-        if pot and pot.get("prevalece_sobre"):
-            det.append(
-                f"Este ponto está na **{pot['zone_code']}** (Área de Especial Interesse), "
-                f"que se **sobrepõe** à zona base **{pot['prevalece_sobre']}**. Pela regra de "
-                "sobreposição da LC 173/2024 (Quadro 01/Anexo 16), os parâmetros da AEI "
-                f"**prevalecem** — por isso os valores acima são os da {pot['zone_code']}."
-            )
-        elif pot:
-            det.append(
-                f"Este ponto está na zona base **{pot['zone_code']}**, e nenhuma Área de "
-                "Especial Interesse com parâmetros próprios o cobre — por isso os valores "
-                f"acima são os da própria {pot['zone_code']}."
-            )
-        if info.get("preservacao_aei"):
-            det.append(
-                f"O ponto está em **{info['preservacao_aei']}** (AEI Ambiental de preservação), "
-                "onde a construção é em regra vedada — daí o veredito restritivo."
-            )
-        if info.get("in_app"):
-            det.append(
-                "O ponto cai em **APP** (faixa de preservação permanente, ex.: margem de rio), "
-                "que impõe restrição independentemente da zona."
-            )
-        if not det:
-            det.append(
-                "Não há parâmetros construtivos resolvidos para este ponto (pode ser área "
-                "rural, de preservação, ou fora das subzonas mapeadas)."
-            )
-        for d in det:
+    with st.expander("Por que estes valores? (detalhes)", icon=":material/info:"):
+        for d in _justification_lines(info):
             st.markdown("- " + d)
         st.caption(
             "Resolução: subzona por ponto-em-polígono (17 subzonas desenhadas à mão) "
@@ -716,59 +756,62 @@ def render_inspect_panel(map_state):
 
     st.caption(f"Coordenada: {clicked['lat']:.5f}, {clicked['lng']:.5f}")
 
-    if st.button("💾 Salvar no histórico", key="save_history"):
+    if st.button("Salvar no histórico", key="save_history", icon=":material/bookmark_add:", type="primary", use_container_width=True):
         _add_to_history(clicked, origin, info, verd)
 
 if size_choice == "Amplo":
     # Map full width; controls + inspect panel below, maximized horizontally.
     map_state = _render_map(_layout["height"])
     _size_control()
-    render_inspect_panel(map_state)
+    with st.container(border=True):
+        render_inspect_panel(map_state)
 else:
     col_map, col_info = st.columns(_layout["ratio"], gap="medium")
     with col_map:
         map_state = _render_map(_layout["height"])
         _size_control()
     with col_info:
-        render_inspect_panel(map_state)
+        with st.container(border=True):
+            render_inspect_panel(map_state)
         
 # ----- Saved points history (below the map) -------------------------------
 st.markdown("---")
-st.subheader("🗂️ Histórico de pontos salvos")
+st.subheader(":material/bookmarks: Histórico de pontos salvos")
 
 _history = st.session_state.get("history", [])
 if not _history:
     st.caption(
         "Nenhum ponto salvo ainda. Clique num ponto (ou busque um) e use "
-        "**💾 Salvar no histórico** no painel do ponto."
+        "**Salvar no histórico** no painel do ponto."
     )
 else:
     for _entry in list(_history):
         _col_exp, _col_del = st.columns([0.92, 0.08])
         with _col_exp:
             _v = _entry["verdict"]
-            with st.expander(f"{_v['icon']} {_entry['typed']} — potencial {_v['level']}"):
+            with st.expander(f"{_verdict_badge(_v['level'])} {_entry['typed']} — potencial {_v['level']}"):
                 st.markdown(_history_details_md(_entry))
-        if _col_del.button("➖", key=f"del_{_entry['id']}", help="Remover do histórico"):
+        if _col_del.button("", key=f"del_{_entry['id']}", icon=":material/close:", help="Remover do histórico", type="tertiary", use_container_width=True):
             st.session_state["history"] = [e for e in _history if e["id"] != _entry["id"]]
             st.session_state.pop("report_pdf", None)
             st.rerun()
 
     _c_clear, _c_report = st.columns(2)
-    if _c_clear.button("🗑️ Limpar histórico", key="clear_history", use_container_width=True):
+    if _c_clear.button("Limpar histórico", key="clear_history", icon=":material/delete_sweep:", use_container_width=True):
         st.session_state["history"] = []
         st.session_state.pop("report_pdf", None)
         st.rerun()
-    if _c_report.button("📄 Gerar relatório PDF", key="gen_report", use_container_width=True):
+    if _c_report.button("Gerar relatório PDF", key="gen_report", icon=":material/picture_as_pdf:", type="primary", use_container_width=True):
         with st.spinner("Gerando relatório (baixando miniaturas do mapa)…"):
             st.session_state["report_pdf"] = build_report_pdf(st.session_state["history"])
     if st.session_state.get("report_pdf"):
         _c_report.download_button(
-            "⬇️ Baixar relatório",
+            "Baixar relatório",
             data=st.session_state["report_pdf"],
+            icon=":material/download:",
             file_name="relatorio_viabilidade_sao_jose.pdf",
             mime="application/pdf",
             key="dl_report",
+            type="primary",
             use_container_width=True,
-        )
-        
+        )        
