@@ -579,7 +579,7 @@ with st.expander("Ir para um local (coordenada ou endereço)", expanded=False, i
         _in_lng = _c2.number_input(
             "Longitude", value=float(DEFAULT_CENTER_LON), format="%.5f", key="nav_lng_in"
         )
-        if st.button("Ir para coordenada", key="nav_go_coord"):
+        if st.button("Ir para coordenada", key="nav_go_coord", type="primary", use_container_width=True):
             st.session_state["nav_target"] = (float(_in_lat), float(_in_lng))
             st.session_state["nav_input"] = {
                 "kind": "coord",
@@ -589,7 +589,7 @@ with st.expander("Ir para um local (coordenada ou endereço)", expanded=False, i
         _addr = st.text_input(
             "Endereço", key="nav_addr_in", placeholder="Rua, bairro — São José/SC"
         )
-        if st.button("Buscar endereço", key="nav_go_addr"):
+        if st.button("Buscar endereço", key="nav_go_addr", type="primary", use_container_width=True):
             if _addr.strip():
                 _hit = geocode_address(_addr.strip())
                 if _hit:
@@ -601,7 +601,7 @@ with st.expander("Ir para um local (coordenada ou endereço)", expanded=False, i
         _nt = st.session_state["nav_target"]
         _n1, _n2 = st.columns([3, 1])
         _n1.caption(f":material/location_on: Local marcado: {_nt[0]:.5f}, {_nt[1]:.5f}")
-        if _n2.button("Limpar", key="nav_clear"):
+        if _n2.button("Limpar", key="nav_clear", use_container_width=True):
             del st.session_state["nav_target"]
             st.session_state.pop("nav_input", None)
 
@@ -756,7 +756,7 @@ def render_inspect_panel(map_state):
 
     st.caption(f"Coordenada: {clicked['lat']:.5f}, {clicked['lng']:.5f}")
 
-    if st.button("Salvar no histórico", key="save_history", icon=":material/bookmark_add:"):
+    if st.button("Salvar no histórico", key="save_history", icon=":material/bookmark_add:", type="primary", use_container_width=True):
         _add_to_history(clicked, origin, info, verd)
 
 if size_choice == "Amplo":
@@ -791,7 +791,7 @@ else:
             _v = _entry["verdict"]
             with st.expander(f"{_verdict_badge(_v['level'])} {_entry['typed']} — potencial {_v['level']}"):
                 st.markdown(_history_details_md(_entry))
-        if _col_del.button("", key=f"del_{_entry['id']}", icon=":material/close:", help="Remover do histórico", use_container_width=True):
+        if _col_del.button("", key=f"del_{_entry['id']}", icon=":material/close:", help="Remover do histórico", type="tertiary", use_container_width=True):
             st.session_state["history"] = [e for e in _history if e["id"] != _entry["id"]]
             st.session_state.pop("report_pdf", None)
             st.rerun()
@@ -801,7 +801,7 @@ else:
         st.session_state["history"] = []
         st.session_state.pop("report_pdf", None)
         st.rerun()
-    if _c_report.button("Gerar relatório PDF", key="gen_report", icon=":material/picture_as_pdf:", use_container_width=True):
+    if _c_report.button("Gerar relatório PDF", key="gen_report", icon=":material/picture_as_pdf:", type="primary", use_container_width=True):
         with st.spinner("Gerando relatório (baixando miniaturas do mapa)…"):
             st.session_state["report_pdf"] = build_report_pdf(st.session_state["history"])
     if st.session_state.get("report_pdf"):
@@ -812,6 +812,6 @@ else:
             file_name="relatorio_viabilidade_sao_jose.pdf",
             mime="application/pdf",
             key="dl_report",
+            type="primary",
             use_container_width=True,
-        )
-        
+        )        
