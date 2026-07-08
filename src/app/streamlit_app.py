@@ -35,6 +35,15 @@ st.markdown(
          BaseWeb sliders rendering correctly — page zoom desyncs the filled
          track from the thumb. */
       html { font-size: 14px; }
+
+      /* --- Typography & spacing (estilo-3) --- */
+      /* Tighter page padding for a denser, product-like layout. */
+      .block-container { padding-top: 2.5rem; padding-bottom: 3rem; }
+      /* App title a touch smaller so it doesn't dominate the header. */
+      h1 { font-size: 2rem; line-height: 1.2; }
+      /* Smaller st.metric so values fit narrow columns (no more "5.6°…"). */
+      [data-testid="stMetricValue"] { font-size: 1.1rem; line-height: 1.3; }
+      [data-testid="stMetricLabel"] { font-size: 0.78rem; }
       section[data-testid="stSidebar"][aria-expanded="true"] {
         width: 280px !important;
         min-width: 280px !important;
