@@ -513,6 +513,10 @@ if slope_threshold > 0 and SLOPE_TIF.exists():
 # ----- Render -------------------------------------------------------------
 
 st.title("Mapa de Viabilidade de Construção — São José/SC")
+st.caption(
+    "Explore as camadas do Plano Diretor e do terreno, clique num ponto para "
+    "ver o potencial construtivo, e salve locais para gerar um relatório."
+)
 
 # ----- Zone potential search (Phase 10 M7) -------------------------------
 with st.expander("Buscar zonas por potencial construtivo", expanded=False, icon=":material/search:"):
@@ -759,14 +763,16 @@ if size_choice == "Amplo":
     # Map full width; controls + inspect panel below, maximized horizontally.
     map_state = _render_map(_layout["height"])
     _size_control()
-    render_inspect_panel(map_state)
+    with st.container(border=True):
+        render_inspect_panel(map_state)
 else:
     col_map, col_info = st.columns(_layout["ratio"], gap="medium")
     with col_map:
         map_state = _render_map(_layout["height"])
         _size_control()
     with col_info:
-        render_inspect_panel(map_state)
+        with st.container(border=True):
+            render_inspect_panel(map_state)
         
 # ----- Saved points history (below the map) -------------------------------
 st.markdown("---")
