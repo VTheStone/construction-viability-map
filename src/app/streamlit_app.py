@@ -19,7 +19,7 @@ from src.app.map_view import RasterLayerSpec, VectorLayerSpec, build_map
 
 st.set_page_config(
     page_title="Construction Viability Map",
-    page_icon="🗺️",
+    page_icon=":material/map:",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -174,9 +174,23 @@ def _history_details_md(entry):
             f"**Pavimentos:** {pav_s} · **CA:** {pot.get('ca_basico')} → "
             f"{pot.get('ca_maximo')} · **Lote mín.:** {pot.get('area_min_m2')} m²"
         )
-    lines.append(f"**Veredito:** {verd['icon']} potencial {verd['level']}")
+    lines.append(f"**Veredito:** {_verdict_badge(verd['level'])} potencial {verd['level']}")
     lines += [f"- {r}" for r in verd["reasons"]]
     return "\n\n".join(lines)
+
+
+_VERDICT_BADGE = {
+    "alto": ":green[:material/check_circle:]",
+    "médio": ":orange[:material/change_history:]",
+    "baixo": ":orange[:material/warning:]",
+    "restrito": ":red[:material/block:]",
+}
+
+
+def _verdict_badge(level):
+    """Colored Material icon for a verdict level (UI only)."""
+    return _VERDICT_BADGE.get(level, ":material/help:")
+
 
 def _static_map(lat, lng, zoom=15, size=(480, 300)):
     """Small OSM map centered on (lat, lng) with a marker. Returns a PIL
@@ -450,7 +464,7 @@ if slope_threshold > 0 and SLOPE_TIF.exists():
 st.title("Mapa de Viabilidade de Construção — São José/SC")
 
 # ----- Zone potential search (Phase 10 M7) -------------------------------
-with st.expander("🔎 Buscar zonas por potencial construtivo", expanded=False):
+with st.expander("Buscar zonas por potencial construtivo", expanded=False, icon=":material/search:"):
     _params = load_zone_params()
     f1, f2 = st.columns(2)
     min_pav = f1.slider("Pavimentos mínimos", 0, 25, 0, key="search_min_pav")
@@ -482,7 +496,7 @@ with st.expander("🔎 Buscar zonas por potencial construtivo", expanded=False):
     # active (the default 0/0 would otherwise light up every zone).
     search_highlight = None
     destacar = st.checkbox(
-        "🗺️ Destacar as zonas encontradas no mapa",
+        "Destacar as zonas encontradas no mapa",
         value=True,
         key="search_highlight",
     )
@@ -500,7 +514,7 @@ with st.expander("🔎 Buscar zonas por potencial construtivo", expanded=False):
             )
 
 # ----- Navigate to a coordinate / address --------------------------------
-with st.expander("🧭 Ir para um local (coordenada ou endereço)", expanded=False):
+with st.expander("Ir para um local (coordenada ou endereço)", expanded=False, icon=":material/explore:"):
     _t_coord, _t_addr = st.tabs(["Coordenada", "Endereço"])
     with _t_coord:
         _c1, _c2 = st.columns(2)
@@ -531,7 +545,7 @@ with st.expander("🧭 Ir para um local (coordenada ou endereço)", expanded=Fal
     if st.session_state.get("nav_target"):
         _nt = st.session_state["nav_target"]
         _n1, _n2 = st.columns([3, 1])
-        _n1.caption(f"📍 Local marcado: {_nt[0]:.5f}, {_nt[1]:.5f}")
+        _n1.caption(f":material/location_on: Local marcado: {_nt[0]:.5f}, {_nt[1]:.5f}")
         if _n2.button("Limpar", key="nav_clear"):
             del st.session_state["nav_target"]
             st.session_state.pop("nav_input", None)
@@ -579,7 +593,7 @@ def _size_control():
 
 
 def render_inspect_panel(map_state):
-    st.subheader("📍 Ponto inspecionado")
+    st.subheader(":material/location_searching: Ponto inspecionado")
     clicked = (map_state or {}).get("last_clicked")
     origin = None
     if clicked:
@@ -638,7 +652,7 @@ def render_inspect_panel(map_state):
         titulo = pot["zone_code"]
         if pot.get("prevalece_sobre"):
             titulo = f"{pot['zone_code']} (prevalece sobre {pot['prevalece_sobre']})"
-        st.markdown(f"**🏗️ Potencial construtivo — subzona {titulo}:**")
+        st.markdown(f":material/construction: **Potencial construtivo — subzona {titulo}:**")
         p1, p2, p3 = st.columns(3)
         pav = pot.get("pavimentos_max")
         p1.metric("Pavimentos", "Livre (até 25)" if pav == "LIVRE" else str(pav))
@@ -670,14 +684,14 @@ def render_inspect_panel(map_state):
         )
 
     verd = viability_verdict(info)
-    st.markdown(f"### {verd['icon']} Veredito: potencial **{verd['level']}**")
+    st.markdown(f"### {_verdict_badge(verd['level'])} Veredito: potencial **{verd['level']}**")
     for reason in verd["reasons"]:
         st.markdown(f"- {reason}")
     st.caption("Leitura indicativa — não substitui parecer técnico, jurídico ou ambiental.")
 
     # Justification (hidden by default): which segmentations cover the point
     # and which one defined the shown parameters (overlay precedence).
-    with st.expander("ℹ️ Por que estes valores? (detalhes)"):
+    with st.expander("Por que estes valores? (detalhes)", icon=":material/info:"):
         det = []
         if pot and pot.get("prevalece_sobre"):
             det.append(
@@ -716,7 +730,7 @@ def render_inspect_panel(map_state):
 
     st.caption(f"Coordenada: {clicked['lat']:.5f}, {clicked['lng']:.5f}")
 
-    if st.button("💾 Salvar no histórico", key="save_history"):
+    if st.button("Salvar no histórico", key="save_history", icon=":material/bookmark_add:"):
         _add_to_history(clicked, origin, info, verd)
 
 if size_choice == "Amplo":
@@ -734,38 +748,39 @@ else:
         
 # ----- Saved points history (below the map) -------------------------------
 st.markdown("---")
-st.subheader("🗂️ Histórico de pontos salvos")
+st.subheader(":material/bookmarks: Histórico de pontos salvos")
 
 _history = st.session_state.get("history", [])
 if not _history:
     st.caption(
         "Nenhum ponto salvo ainda. Clique num ponto (ou busque um) e use "
-        "**💾 Salvar no histórico** no painel do ponto."
+        "**Salvar no histórico** no painel do ponto."
     )
 else:
     for _entry in list(_history):
         _col_exp, _col_del = st.columns([0.92, 0.08])
         with _col_exp:
             _v = _entry["verdict"]
-            with st.expander(f"{_v['icon']} {_entry['typed']} — potencial {_v['level']}"):
+            with st.expander(f"{_verdict_badge(_v['level'])} {_entry['typed']} — potencial {_v['level']}"):
                 st.markdown(_history_details_md(_entry))
-        if _col_del.button("➖", key=f"del_{_entry['id']}", help="Remover do histórico"):
+        if _col_del.button("", key=f"del_{_entry['id']}", icon=":material/close:", help="Remover do histórico", use_container_width=True):
             st.session_state["history"] = [e for e in _history if e["id"] != _entry["id"]]
             st.session_state.pop("report_pdf", None)
             st.rerun()
 
     _c_clear, _c_report = st.columns(2)
-    if _c_clear.button("🗑️ Limpar histórico", key="clear_history", use_container_width=True):
+    if _c_clear.button("Limpar histórico", key="clear_history", icon=":material/delete_sweep:", use_container_width=True):
         st.session_state["history"] = []
         st.session_state.pop("report_pdf", None)
         st.rerun()
-    if _c_report.button("📄 Gerar relatório PDF", key="gen_report", use_container_width=True):
+    if _c_report.button("Gerar relatório PDF", key="gen_report", icon=":material/picture_as_pdf:", use_container_width=True):
         with st.spinner("Gerando relatório (baixando miniaturas do mapa)…"):
             st.session_state["report_pdf"] = build_report_pdf(st.session_state["history"])
     if st.session_state.get("report_pdf"):
         _c_report.download_button(
-            "⬇️ Baixar relatório",
+            "Baixar relatório",
             data=st.session_state["report_pdf"],
+            icon=":material/download:",
             file_name="relatorio_viabilidade_sao_jose.pdf",
             mime="application/pdf",
             key="dl_report",
