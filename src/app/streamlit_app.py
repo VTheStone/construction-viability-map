@@ -386,6 +386,7 @@ for group_id in GROUP_ORDER:
             # tidy: an unchecked layer shows just its name.
             opacity = float(layer["default_opacity"])
             show_labels = False
+            zones = None
             if show:
                 opacity = st.slider(
                     "Opacidade",
@@ -419,10 +420,26 @@ for group_id in GROUP_ORDER:
                     )
                     st.markdown(rows, unsafe_allow_html=True)
 
+                # Per-subzone visibility (Master Plan): choose which zone
+                # codes to show. This replaces the old in-map control.
+                if layer["group"] == "master_plan":
+                    _codes = list(dict.fromkeys(
+                        str(c) for c in
+                        load_vector_layer(str(PROJECT_ROOT / layer["path"]))["zone_code"]
+                    ))
+                    zones = st.pills(
+                        "Subzonas visíveis",
+                        _codes,
+                        selection_mode="multi",
+                        default=_codes,
+                        key=f"zones_{layer['id']}",
+                    )
+
             choices[layer["id"]] = {
                 "show": show,
                 "opacity": opacity,
                 "show_labels": show_labels,
+                "zones": zones,
             }
 
         # Slope highlight filter belongs to the Terreno group, right under
@@ -472,6 +489,13 @@ for layer in layers:
 
         is_master_plan = layer["group"] == "master_plan"
 
+        # Master Plan layers are filtered to the subzones kept checked in the
+        # sidebar (the per-zone control lives there now, not on the map).
+        gdf = load_vector_layer(str(PROJECT_ROOT / layer["path"]))
+        zones = choice.get("zones")
+        if is_master_plan and zones is not None:
+            gdf = gdf[gdf["zone_code"].astype(str).isin([str(z) for z in zones])]
+
         # Companion OCR'd zone-code labels: shown only when the layer's
         # "Mostrar rótulos" sub-toggle is on.
         label_gdf = None
@@ -482,7 +506,7 @@ for layer in layers:
         vector_specs.append(
             VectorLayerSpec(
                 name=layer["name"],
-                gdf=load_vector_layer(str(PROJECT_ROOT / layer["path"])),
+                gdf=gdf,
                 style=style,
                 show=True,
                 color_property="color_hex" if is_master_plan else None,
