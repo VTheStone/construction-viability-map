@@ -254,80 +254,170 @@ def _static_map(lat, lng, zoom=15, size=(480, 300)):
 
 
 def build_report_pdf(history):
-    """One PDF section per saved point (typed location, map thumbnail, and
-    all inspected facts). Returns PDF bytes. Core PDF fonts are latin-1, so
-    text is sanitized (accents kept, emoji dropped)."""
+    """Styled PDF report — one card per saved point with a map thumbnail and
+    every inspected fact. Slate + Teal palette (teal header band, zebra fact
+    rows, colored verdict pill, paginated footer). Core PDF fonts are latin-1
+    (accents kept; emoji/dashes dropped)."""
     from fpdf import FPDF
     from fpdf.enums import XPos, YPos
 
-    def _txt(s):
+    TEAL = (15, 118, 110)
+    SLATE_900 = (15, 23, 42)
+    SLATE_500 = (100, 116, 139)
+    SLATE_200 = (203, 213, 225)
+    SLATE_50 = (248, 250, 252)
+    VERDICT_RGB = {
+        "alto": (22, 163, 74),
+        "médio": (217, 119, 6),
+        "baixo": (234, 88, 12),
+        "restrito": (220, 38, 38),
+    }
+
+    def txt(s):
         return str(s).encode("latin-1", "ignore").decode("latin-1")
 
-    pdf = FPDF(format="A4")
-    pdf.set_auto_page_break(auto=True, margin=15)
+    class ReportPDF(FPDF):
+        def header(self):
+            self.set_fill_color(*TEAL)
+            self.rect(0, 0, self.w, 16, style="F")
+            self.set_xy(self.l_margin, 4.5)
+            self.set_text_color(255, 255, 255)
+            self.set_font("helvetica", "B", 12)
+            self.cell(0, 7, txt("Relatório de Viabilidade de Construção  ·  São José/SC"))
+            self.set_y(21)
+            self.set_text_color(*SLATE_900)
+
+        def footer(self):
+            self.set_y(-12)
+            self.set_font("helvetica", "I", 7)
+            self.set_text_color(*SLATE_500)
+            self.cell(
+                0, 6,
+                txt(f"Valores indicativos - LC 173/2024 (Tabela 01) - pag. {self.page_no()}"),
+                align="C",
+            )
+
+    pdf = ReportPDF(format="A4")
+    pdf.set_top_margin(21)
+    pdf.set_auto_page_break(auto=True, margin=18)
     pdf.add_page()
+    epw = pdf.epw
 
-    def fact(label, value):
-        pdf.multi_cell(0, 6, _txt(f"{label} {value}"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-
-    pdf.set_font("helvetica", "B", 16)
-    pdf.multi_cell(0, 10, _txt("Relatório de Viabilidade — São José/SC"),
+    pdf.set_text_color(*SLATE_500)
+    pdf.set_font("helvetica", "", 10)
+    pdf.multi_cell(0, 6, txt(f"{len(history)} local(is) inspecionado(s)  ·  parâmetros LC 173/2024 (Tabela 01)"),
                    new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.set_font("helvetica", "", 9)
-    pdf.set_text_color(120, 120, 120)
-    pdf.multi_cell(0, 6, _txt(
-        f"{len(history)} local(is) - parâmetros LC 173/2024 (Tabela 01) - valores indicativos"
-    ), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.set_text_color(0, 0, 0)
-    pdf.ln(3)
+    pdf.ln(4)
+
+    def zebra(rows):
+        line_h = 7
+        for idx, (label, value) in enumerate(rows):
+            fill = idx % 2 == 0
+            if fill:
+                pdf.set_fill_color(*SLATE_50)
+            pdf.set_font("helvetica", "", 9)
+            pdf.set_text_color(*SLATE_500)
+            pdf.cell(52, line_h, "   " + txt(label), fill=fill)
+            pdf.set_text_color(*SLATE_900)
+            pdf.cell(0, line_h, txt(str(value)), fill=fill,
+                     new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
     for i, entry in enumerate(history, 1):
         info, verd = entry["info"], entry["verdict"]
 
+        # Number badge + heading
+        y = pdf.get_y()
+        badge = 8
+        pdf.set_fill_color(*TEAL)
+        pdf.rect(pdf.l_margin, y, badge, badge, style="F")
+        pdf.set_xy(pdf.l_margin, y)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font("helvetica", "B", 12)
+        pdf.cell(badge, badge, str(i), align="C")
+        pdf.set_xy(pdf.l_margin + badge + 3, y)
+        pdf.set_text_color(*SLATE_900)
         pdf.set_font("helvetica", "B", 13)
-        pdf.multi_cell(0, 7, _txt(f"{i}. {entry['typed']}"),
-                       new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.cell(0, badge, txt(entry["typed"]), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.ln(2)
 
+        # Map thumbnail (centered, bordered)
         img = _static_map(entry["lat"], entry["lng"])
         if img is not None:
+            w = 130
+            h = w * img.height / img.width
+            if pdf.get_y() + h > pdf.h - pdf.b_margin:
+                pdf.add_page()
+            x0 = pdf.l_margin + (epw - w) / 2
+            y0 = pdf.get_y()
             try:
-                pdf.image(img, w=100)
+                pdf.image(img, x=x0, y=y0, w=w)
+                pdf.set_draw_color(*SLATE_200)
+                pdf.set_line_width(0.2)
+                pdf.rect(x0, y0, w, h)
             except Exception:
                 pass
-        pdf.ln(1)
+            pdf.set_y(y0 + h + 5)
 
-        pdf.set_font("helvetica", "", 10)
-        fact("Localização digitada:", entry["typed"])
-        fact("Coordenada:", f"{entry['lat']:.5f}, {entry['lng']:.5f}")
+        # Key facts (zebra table)
+        rows = [
+            ("Localização digitada", entry["typed"]),
+            ("Coordenada", f"{entry['lat']:.5f}, {entry['lng']:.5f}"),
+        ]
         if "slope_deg" in info:
             pct = f" / {info['slope_pct']}%" if "slope_pct" in info else ""
-            fact("Declividade:", f"{info['slope_deg']}\u00b0{pct}")
+            rows.append(("Declividade", f"{info['slope_deg']}\u00b0{pct}"))
         if "elevation_m" in info:
-            fact("Elevação:", f"{info['elevation_m']} m")
+            rows.append(("Elevação", f"{info['elevation_m']} m"))
         if "in_app" in info:
-            fact("Em APP:", "Sim" if info["in_app"] else "Não")
+            rows.append(("Em APP", "Sim" if info["in_app"] else "Não"))
         pot = info.get("potential")
         if pot:
             pav = pot.get("pavimentos_max")
-            pav_s = "Livre (ate 25)" if pav == "LIVRE" else str(pav)
+            pav_s = "Livre (até 25)" if pav == "LIVRE" else str(pav)
             zona = pot["zone_code"] + (
-                f" (prevalece sobre {pot['prevalece_sobre']})"
-                if pot.get("prevalece_sobre") else ""
+                f" (prevalece sobre {pot['prevalece_sobre']})" if pot.get("prevalece_sobre") else ""
             )
-            fact("Zona:", zona)
-            fact("Pavimentos:", pav_s)
-            fact("CA (basico -> maximo):", f"{pot.get('ca_basico')} -> {pot.get('ca_maximo')}")
-            fact("Lote minimo:", f"{pot.get('area_min_m2')} m2")
-        fact("Veredito:", f"potencial {verd['level']}")
-        for r in verd["reasons"]:
-            fact("-", r)
-        pdf.ln(1)
-        pdf.set_font("helvetica", "B", 10)
-        pdf.multi_cell(0, 6, _txt("Justificativa:"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            rows += [
+                ("Zona", zona),
+                ("Pavimentos", pav_s),
+                ("CA (básico -> máximo)", f"{pot.get('ca_basico')} -> {pot.get('ca_maximo')}"),
+                ("Lote mínimo", f"{pot.get('area_min_m2')} m2"),
+            ]
+        zebra(rows)
+        pdf.ln(3)
+
+        # Verdict pill
+        level = verd["level"]
+        pdf.set_fill_color(*VERDICT_RGB.get(level, SLATE_500))
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font("helvetica", "B", 9)
+        pill = txt(f"VEREDITO: POTENCIAL {level.upper()}")
+        pdf.cell(pdf.get_string_width(pill) + 8, 7, pill,
+                 fill=True, align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.ln(2)
+        pdf.set_text_color(*SLATE_900)
         pdf.set_font("helvetica", "", 9)
+        for r in verd["reasons"]:
+            pdf.multi_cell(0, 5, txt("- " + r), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.ln(2)
+
+        # Justification
+        pdf.set_font("helvetica", "B", 9)
+        pdf.set_text_color(*SLATE_500)
+        pdf.multi_cell(0, 5, txt("JUSTIFICATIVA"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.set_font("helvetica", "", 8)
+        pdf.set_text_color(*SLATE_900)
         for j in _justification_lines(info):
-            pdf.multi_cell(0, 5, _txt("- " + j), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-        pdf.ln(4)
+            pdf.multi_cell(0, 5, txt("- " + j), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+
+        # Divider between locations
+        if i < len(history):
+            pdf.ln(5)
+            pdf.set_draw_color(*SLATE_200)
+            pdf.set_line_width(0.3)
+            yy = pdf.get_y()
+            pdf.line(pdf.l_margin, yy, pdf.l_margin + epw, yy)
+            pdf.ln(6)
 
     return bytes(pdf.output())
 
