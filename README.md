@@ -10,7 +10,7 @@
 
 ![São José/SC Master Plan zones rendered as interactive vector overlays on the OSM basemap](docs/example_map.png)
 
-*Example: Master Plan special-interest zones (LC 173/2024) of São José/SC, served as interactive vector overlays over the OpenStreetMap basemap.*
+*The app: Master Plan zones, terrain and environmental layers of São José/SC over an OpenStreetMap basemap, with click-to-inspect construction potential.*
 
 ## Objective
 
@@ -22,11 +22,30 @@ The goal is an interactive map that communicates construction viability across a
 
 The architecture is **modular per municipality**: new cities can be added without touching the core code.
 
+## Features in action
+
+**Click-to-inspect** — slope, elevation, APP, zoning and construction potential (floors, CA, buildable area and a viability verdict) at any point.
+
+![Click to inspect a point](docs/demo_inspect.gif)
+
+**Search zones by buildable criteria** — filter by minimum floors / CA and highlight the matching zones on the map.
+
+![Search zones by potential](docs/demo_search.gif)
+
+**Go to a coordinate or address** — geocode a location, jump the map there with a marker, and inspect it.
+
+![Navigate to a location](docs/demo_navigate.gif)
+
+**Saved-points history + PDF report** — collect inspected points and export a per-point report with map thumbnails.
+
+![Saved points and PDF report](docs/demo_report.gif)
+
+
 ## Deliverables
 
 - A geospatial pipeline: **ingest** (IBGE, OSM, Topodata) → **transform** (slope raster, APP buffers, automated Master Plan vectorization) → **publish** as interactive layers.
 - Master Plan PDF annexes turned into **vector polygon layers** (GeoParquet) via HSV color segmentation — no manual digitizing.
-- A **Streamlit + Folium** app with a permanent OSM basemap, per-layer opacity and per-zone toggles, **click-to-inspect** (slope, elevation, APP, zoning and **construction potential** at any clicked point), a **slope-threshold highlight** filter, **search zones by buildable criteria** (floors/CA), and OCR-extracted zone-code labels as an optional layer.- A **Streamlit + Folium** app with a permanent OSM basemap, per-layer opacity and per-zone toggles, **click-to-inspect** (slope, elevation, APP and zoning at any clicked point), a **slope-threshold highlight** filter, and OCR-extracted zone-code labels as an optional layer.
+- A **Streamlit + Folium** app with a permanent OSM basemap, per-layer opacity and per-zone toggles, **click-to-inspect** (slope, elevation, APP, zoning and **construction potential** at any clicked point), a **slope-threshold highlight** filter, **search zones by buildable criteria** (floors/CA), go-to-**coordinate/address** navigation, and a **saved-points history with a downloadable PDF report**.
 - A reusable **Adapter Pattern** so a second municipality plugs in without refactoring the core.
 
 ### Pilot city
@@ -95,7 +114,7 @@ See [`CONTRIBUTING.md`](./CONTRIBUTING.md) (coming soon).
 ## Known limitations
 
 - **Lots**: São José/SC has no public cadastral dataset. This project uses OpenStreetMap building footprints + synthetic blocks as a proxy. **It is not a substitute for official municipal records.**
-- **Zoning**: Master Plan maps are automatically vectorized via HSV color segmentation of the official PDF annexes (LC 173/2024). Subzones that share a single legend color merge into one polygon, so the exact subzone behind the **construction-potential** lookup comes from a hand-digitized boundary layer (17 subzones traced over the georeferenced official map in QGIS) resolved by point-in-polygon; OCR (EasyOCR) zone-code labels remain as an optional display layer.- **Zoning**: Master Plan maps are automatically vectorized via HSV color segmentation of the official PDF annexes (LC 173/2024). Subzones that share a single legend color are merged into one polygon; per-subzone zone codes are recovered separately via OCR (EasyOCR) and shown as an optional label layer.
+- **Zoning**: Master Plan maps are automatically vectorized via HSV color segmentation of the official PDF annexes (LC 173/2024). Subzones that share a single legend color merge into one polygon, so the exact subzone behind the **construction-potential** lookup comes from a hand-digitized boundary layer (17 subzones traced over the georeferenced official map in QGIS) resolved by point-in-polygon; OCR (EasyOCR) zone-code labels remain as an optional display layer.
 - **DEM**: uses Topodata from INPE (~30 m resolution), adequate for municipal-level analysis but coarse for intra-block analysis.
 
 ## Disclaimer
