@@ -20,7 +20,6 @@ from typing import Any
 
 import folium
 import geopandas as gpd
-from folium.plugins import GroupedLayerControl
 from folium.raster_layers import ImageOverlay
 
 
@@ -270,18 +269,8 @@ def build_map(
             b = highlight_gdf.total_bounds  # minx, miny, maxx, maxy
             fmap.fit_bounds([[b[1], b[0]], [b[3], b[2]]])
 
-    # The standard LayerControl handles non-grouped layers (rasters and
-    # ungrouped vectors). GroupedLayerControl adds the grouped sublayers
-    # below, with a heading per group.
-    folium.LayerControl(collapsed=False).add_to(fmap)    # The standard LayerControl handles non-grouped layers (rasters and
-    # ungrouped vectors). GroupedLayerControl adds the grouped sublayers
-    # below, with a heading per group.
-    folium.LayerControl(collapsed=False).add_to(fmap)
-    if groups:
-        GroupedLayerControl(
-            groups={name: subs for name, subs in groups.items()},
-            collapsed=False,
-            exclusive_groups=False,
-        ).add_to(fmap)
+    # No in-map LayerControl: layer visibility is driven entirely by the
+    # sidebar (toggling a layer reruns and rebuilds the map). Keeps the map
+    # clean (nothing covering it) and avoids the duplicate-control quirks.
 
     return fmap

@@ -2,7 +2,7 @@
 
 > Master planning document. Describes the current architecture, scope, and roadmap. Reference point for resuming work in future sessions.
 
-**Last updated:** 2026-06-08
+**Last updated:** 2026-07-19 · **Status:** live for São José/SC — full pipeline, interactive app, click-inspect + construction potential, saved-points history & PDF report. [Live demo](https://construction-viability-map.streamlit.app)
 
 ---
 
@@ -29,7 +29,7 @@ Build an interactive map that helps users visually understand construction viabi
 | Viability model | Independent toggleable layers + lightweight thresholds | User adjusts opacity, toggles layers on/off, applies simple filters (e.g. "highlight slope > 30%") |
 | Stack | Python + Streamlit + Folium | Dynamic UI, integrated Leaflet, free deploy on Streamlit Cloud |
 | Architecture | Multi-municipality via Adapter Pattern | New cities plug in without changing the core |
-| Static asset serving | FastAPI sidecar on localhost (daemon thread) | Streamlit's websocket payload limit (200 MB) is too small for inline base64; serving PNGs/GeoJSONs via HTTP lets us scale to the full set of Master Plan maps |
+| Static asset serving | Raster PNGs base64-embedded into the Folium map (no sidecar) | The earlier localhost FastAPI sidecar was removed for the Streamlit Cloud deploy — embedding keeps the app self-contained, with no extra process or absolute paths |
 | Dependencies | pip + venv + requirements.txt | Absolute simplicity, no extra tooling |
 | Repository | Public GitHub | Portfolio + supports open-source contribution |
 | Master Plan (PDFs) | **Automated vectorization via color segmentation** — the in-scope maps become vector polygon layers; raster PNGs are deprecated as an end-user artifact | The PDFs are vector containers with one embedded JPEG per map and a vector legend with exact RGB colors. Segmenting that JPEG by HSV-distance to legend colors yields clean polygons. This replaces the planned manual QGIS work entirely. |
